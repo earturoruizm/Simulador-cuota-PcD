@@ -603,14 +603,18 @@ def main():
                 help="Se calcula automáticamente como el 30% del total."
             )
         else:
+            if 'vacantes_ascenso_manual' not in st.session_state:
+                st.session_state.vacantes_ascenso_manual = default_ascenso
+            st.session_state.vacantes_ascenso_manual = min(st.session_state.vacantes_ascenso_manual, total_vacantes)
             vacantes_ascenso = st.number_input(
                 "Vacantes para Ascenso",
                 min_value=0,
                 max_value=total_vacantes,
-                value=default_ascenso,
+                value=st.session_state.vacantes_ascenso_manual,
                 step=1,
                 help="Digite el número de vacantes para ascenso."
             )
+            st.session_state.vacantes_ascenso_manual = vacantes_ascenso
 
         vacantes_ingreso = total_vacantes - vacantes_ascenso
         st.metric(
