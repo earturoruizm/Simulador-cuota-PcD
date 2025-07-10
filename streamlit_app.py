@@ -1,8 +1,8 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v13 (VERSIÓN CON CORRECCIÓN DEFINITIVA DE RENDERIZADO)
+# CÓDIGO DEL SIMULADOR v14 (VERSIÓN FINAL ESTABLE Y FIEL AL ORIGINAL)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
-# Reingeniería y corrección final por: Asistente de IA de Google
+# Adaptación final y corrección por: Asistente de IA de Google
 # ==============================================================================
 import math
 import pandas as pd
@@ -43,7 +43,7 @@ PALETA_COLORES = {
 CREDITOS_SIMULADOR = "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\nDerechos Reservados CNSC © 2025"
 
 # ==============================================================================
-# CLASES DE LÓGICA DE NEGOCIO (NÚCLEO)
+# CLASES DE LÓGICA DE NEGOCIO
 # ==============================================================================
 class EstadoCalculo(Enum): NORMAL, CERO_VACANTES, AJUSTE_V1, AJUSTE_SIN_PCD = range(4)
 @dataclass
@@ -203,27 +203,8 @@ class GeneradorReporte:
 # ==============================================================================
 # INTERFAZ DE USUARIO Y LÓGICA PRINCIPAL
 # ==============================================================================
-def init_session_state():
-    """Inicializa el estado de sesión para el formulario."""
-    if 'form_submitted' not in st.session_state:
-        st.session_state.form_submitted = False
-        reset_simulation(first_run=True)
-
-def reset_simulation(first_run=False):
-    """Resetea el formulario a sus valores iniciales y limpia el reporte."""
-    keys_to_reset = ['nombre_entidad', 'total_vacantes', 'distribucion_tipo', 'ascenso_manual', 'respuesta_elegibilidad']
-    default_values = {"nombre_entidad": "", "total_vacantes": 100, "distribucion_tipo": 'Automático (70/30)', "ascenso_manual": 30, "respuesta_elegibilidad": 'Sí, existen servidores que cumplen los requisitos'}
-    for key in keys_to_reset:
-        st.session_state[key] = default_values[key]
-    st.session_state.form_submitted = False
-    if 'reporte' in st.session_state:
-        del st.session_state.reporte
-    if not first_run:
-        st.success("Formulario limpiado. Puede iniciar una nueva simulación.")
-
 def main():
     st.set_page_config(page_title="Simulador Reserva de Plazas PcD", page_icon="♿", layout="wide")
-    init_session_state()
 
     # --- ENCABEZADO ---
     col1, col2 = st.columns([1, 5])
@@ -240,53 +221,62 @@ def main():
     with st.container(border=True):
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
-        nombre_entidad = col1.text_input("Nombre de la Entidad", key="nombre_entidad")
-        total_vacantes = col2.number_input("Total de Vacantes en la OPEC", min_value=0, step=1, key="total_vacantes")
+        nombre_entidad = col1.text_input("Nombre de la Entidad", placeholder="Ej: Alcaldía Mayor de Bogotá D.C.")
+        total_vacantes = col2.number_input("Total de Vacantes en la OPEC", min_value=0, value=100, step=1)
 
         st.subheader("🔀 2. Distribución de Vacantes")
-        distribucion_tipo = st.radio("Método", options=['Automático (70/30)', 'Manual'], horizontal=True, key='distribucion_tipo')
+        distribucion_tipo = st.radio("Método", options=['Automático (70/30)', 'Manual'], horizontal=True)
         
-        es_automatico = st.session_state.distribucion_tipo == 'Automático (70/30)'
+        es_automatico = (distribucion_tipo == 'Automático (70/30)')
         if es_automatico:
             vacantes_ascenso = round(total_vacantes * 0.3)
             st.number_input("Vacantes para Ascenso", value=vacantes_ascenso, disabled=True, help="Se calcula automáticamente como el 30% del total.")
         else:
-            vacantes_ascenso = st.number_input("Vacantes para Ascenso", min_value=0, max_value=total_vacantes, step=1, key="ascenso_manual", help="Digite el número de vacantes para ascenso.")
+            vacantes_ascenso = st.number_input("Vacantes para Ascenso", min_value=0, max_value=total_vacantes, value=30, step=1, help="Digite el número de vacantes para ascenso.")
         vacantes_ingreso = total_vacantes - vacantes_ascenso
         st.metric(label="Distribución Calculada", value=f"{vacantes_ingreso} Ingreso", delta=f"{vacantes_ascenso} Ascenso", delta_color="off")
 
         st.subheader("♿ 3. Cumplimiento de Requisitos para Ascenso")
         if vacantes_ascenso > 0:
              respuesta_elegibilidad = st.radio("¿Existen servidores con derechos de carrera y discapacidad que cumplen los requisitos para los cargos de ascenso?",
-                options=['Sí, existen servidores que cumplen los requisitos', 'No, no existen servidores que cumplen los requisitos'], key='respuesta_elegibilidad')
+                options=['Sí, existen servidores que cumplen los requisitos', 'No, no existen servidores que cumplen los requisitos'])
              pcd_para_ascenso = (respuesta_elegibilidad == 'Sí, existen servidores que cumplen los requisitos')
         else:
             st.info("No hay vacantes de ascenso, por lo tanto no aplica esta condición."); pcd_para_ascenso = False
 
         st.divider()
-        col_btn1, col_btn2 = st.columns(2)
-        if col_btn1.button(label="🚀 Generar Simulación", use_container_width=True, type="primary"):
+        # --- BOTÓN DE ACCIÓN ---
+        if st.button(label="🚀 Generar Simulación y Reporte", use_container_width=True, type="primary"):
             if not nombre_entidad.strip(): st.error("⚠️ **Error:** El nombre de la entidad es obligatorio.")
             elif vacantes_ingreso < 0: st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo.")
             else:
-                with st.spinner("⚙️ Procesando, por favor espere..."):
-                    datos_entrada = DatosEntrada(total_opec=total_vacantes, v_ingreso=vacantes_ingreso, v_ascenso=vacantes_ascenso, opcion_calculo_str=distribucion_tipo, hay_pcd_para_ascenso=pcd_para_ascenso)
-                    resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
-                    # Guardamos el objeto reporte en el estado de la sesión
-                    st.session_state.reporte = GeneradorReporte(nombre_entidad.strip(), datos_entrada, resultados_sim)
+                # Guardamos las entradas en el estado para que persistan
+                st.session_state.nombre_entidad = nombre_entidad
+                st.session_state.total_vacantes = total_vacantes
+                st.session_state.distribucion_tipo = distribucion_tipo
+                st.session_state.vacantes_ascenso = vacantes_ascenso
+                st.session_state.vacantes_ingreso = vacantes_ingreso
+                st.session_state.pcd_para_ascenso = pcd_para_ascenso
                 st.session_state.form_submitted = True
-        
-        col_btn2.button(label="✨ Nueva Simulación (Limpiar)", on_click=reset_simulation, use_container_width=True)
-    
+                
     # --- VISUALIZACIÓN DE RESULTADOS ---
-    # Esta sección ahora está fuera del 'with st.container()' para asegurar que siempre se evalúe
-    if st.session_state.form_submitted and 'reporte' in st.session_state:
-        st.success("¡Simulación completada!")
-        reporte = st.session_state.reporte
+    # Se muestra solo si el formulario se ha enviado correctamente
+    if 'form_submitted' in st.session_state and st.session_state.form_submitted:
+        with st.spinner("⚙️ Procesando, por favor espere..."):
+            datos_entrada = DatosEntrada(
+                total_opec=st.session_state.total_vacantes, 
+                v_ingreso=st.session_state.vacantes_ingreso, 
+                v_ascenso=st.session_state.vacantes_ascenso, 
+                opcion_calculo_str=st.session_state.distribucion_tipo, 
+                hay_pcd_para_ascenso=st.session_state.pcd_para_ascenso
+            )
+            resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
+            reporte = GeneradorReporte(st.session_state.nombre_entidad.strip(), datos_entrada, resultados_sim)
         
-        # CORRECCIÓN FINAL: La llamada a st.markdown se hace aquí, en el flujo principal.
-        html_para_mostrar = reporte.get_reporte_html()
-        st.markdown(html_para_mostrar, unsafe_allow_html=True)
+        st.success("¡Simulación completada!")
+        
+        # LÍNEA CRÍTICA: Aquí se renderiza el HTML
+        st.markdown(reporte.get_reporte_html(), unsafe_allow_html=True)
         
         pdf_filename, pdf_bytes = reporte.generar_pdf_en_memoria()
         if pdf_bytes:
