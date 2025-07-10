@@ -39,9 +39,9 @@ except ImportError:
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
-    'ingreso_general': '#B2EBF2', 'ingreso_reserva': '#00838F', 'ascenso_general': '#FFECB3',
-    'ascenso_reserva': '#FF8F00', 'texto_claro': '#FFFFFF', 'texto_oscuro': '#333333',
-    'fondo_titulo': '#004D40', 'fondo_hover': '#E0F2F1', 'primario': '#00796B', 'acento': '#FFC107'
+    'ingreso_general': '#A7D8DE', 'ingreso_reserva': '#005F73', 'ascenso_general': '#FFE08A',
+    'ascenso_reserva': '#E27107', 'texto_claro': '#F8F9FA', 'texto_oscuro': '#212529',
+    'fondo_titulo': '#023E8A', 'fondo_hover': '#DEE2E6', 'primario': '#0077B6', 'acento': '#FF9E00'
 }
 CREDITOS_SIMULADOR = (
     "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\n"
@@ -354,16 +354,20 @@ class GeneradorReporte:
         bars1 = ax.barh(labels, general_data, color=PALETA_COLORES['ingreso_general'], label='General', height=0.7)
         bars2 = ax.barh(labels, reserva_data, left=general_data, color=PALETA_COLORES['ingreso_reserva'], label='Reserva PcD', height=0.7)
 
-        for bar_group in (bars1, bars2):
+        for bar_group, colors in zip((bars1, bars2), (PALETA_COLORES['ingreso_general'], PALETA_COLORES['ingreso_reserva'])):
             for bar in bar_group:
                 width = bar.get_width()
                 if width > 0:
+                    # Calculate luminance for contrast
+                    r, g, b = hex_to_rgb(colors)
+                    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+                    text_color = PALETA_COLORES['texto_oscuro'] if luminance > 0.5 else PALETA_COLORES['texto_claro']
                     ax.text(
                         bar.get_x() + width / 2,
                         bar.get_y() + bar.get_height() / 2,
                         f'{width}',
                         ha='center', va='center',
-                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_claro'] if width < 10 else PALETA_COLORES['texto_oscuro']
+                        fontsize=12, weight='bold', color=text_color
                     )
 
         # Eliminamos los spines correctamente
