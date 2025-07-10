@@ -1,8 +1,8 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v4 (VERSIÓN FINAL SIMPLIFICADA)
+# CÓDIGO DEL SIMULADOR v5 (VERSIÓN FINAL CON LOGO Y CORRECCIONES)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
-# Adaptación y simplificación por: Asistente de IA de Google
+# Adaptación y rediseño por: Asistente de IA de Google
 # ==============================================================================
 import math
 import pandas as pd
@@ -58,7 +58,6 @@ def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
     hex_color = hex_color.lstrip('#'); return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 class PDF_Reporte(FPDF):
-    # Ya no necesitamos configurar fuentes externas, usamos las que vienen por defecto.
     def footer(self):
         self.set_y(-15); self.set_font('Helvetica', 'I', 8); self.set_text_color(150, 150, 150)
         self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', align='R')
@@ -84,11 +83,17 @@ class PDF_Reporte(FPDF):
             cleaned_paragraph = " ".join(paragraph.strip().split())
             if not cleaned_paragraph: continue
             style = 'B' if "Pasos Siguientes y Consideraciones Clave:" in cleaned_paragraph else ''
-            prefix = "• " if cleaned_paragraph.startswith("•") else ""
-            if prefix: cleaned_paragraph = cleaned_paragraph.replace("•","").strip()
+            # CORRECCIÓN: Se reemplaza el caracter '•' por un guion '-' para evitar errores de Unicode
+            is_list_item = cleaned_paragraph.startswith(("•", "-"))
+            prefix = "- " if is_list_item else ""
+            if is_list_item: cleaned_paragraph = cleaned_paragraph[1:].strip()
+            
             self.set_font('Helvetica', style, 9)
-            if prefix: self.cell(4, 5, prefix); self.multi_cell(0, 5, cleaned_paragraph, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
-            else: self.multi_cell(0, 5, cleaned_paragraph, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+            if prefix:
+                self.cell(4, 5, prefix)
+                self.multi_cell(0, 5, cleaned_paragraph, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+            else:
+                self.multi_cell(0, 5, cleaned_paragraph, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
             self.ln(2)
 
     def add_pandas_table(self, df: pd.DataFrame):
@@ -97,7 +102,7 @@ class PDF_Reporte(FPDF):
         self.set_fill_color(*hex_to_rgb(PALETA_COLORES['fondo_titulo'])); self.set_text_color(*hex_to_rgb(PALETA_COLORES['texto_claro']))
         for i, header in enumerate(df.columns): self.cell(col_widths[i], line_height, header, border=0, new_x=XPos.RIGHT, new_y=YPos.TOP, align='C', fill=True)
         self.ln(line_height); self.set_font('Helvetica', '', 8); self.set_text_color(0,0,0)
-        for index, row in df.iterrows():
+        for _, row in df.iterrows():
             is_total_row = 'TOTAL' in row['Modalidad']
             if is_total_row: self.set_font('Helvetica', 'B', 8.5)
             fill_color = hex_to_rgb(PALETA_COLORES['fondo_hover']) if is_total_row else (255,255,255)
@@ -177,7 +182,7 @@ class GeneradorReporte:
         plt.tight_layout(rect=[0, 0, 1, 0.95]); return self._render_fig_to_buffer(fig)
     def _crear_pictograma(self) -> Optional[io.BytesIO]:
         if self.total_opec == 0: return None
-        res = self.resultados; max_ico = 150; s_res = "*"; s_gen = "●" # Cambio a *
+        res = self.resultados; max_ico = 150; s_res = "*"; s_gen = "●"
         self.escala_pictograma = 1 if self.total_opec <= max_ico else math.ceil(self.total_opec / max_ico)
         iconos = ([{'s':s_res,'c':PALETA_COLORES['ingreso_reserva']}]*round(res.ingreso.reserva/self.escala_pictograma) + [{'s':s_gen,'c':PALETA_COLORES['ingreso_general']}]*round(res.ingreso.general/self.escala_pictograma) + [{'s':s_res,'c':PALETA_COLORES['ascenso_reserva']}]*round(res.ascenso.reserva/self.escala_pictograma) + [{'s':s_gen,'c':PALETA_COLORES['ascenso_general']}]*round(res.ascenso.general/self.escala_pictograma))
         if not iconos: return None
@@ -186,7 +191,7 @@ class GeneradorReporte:
         for i, icon in enumerate(iconos): ax.text(i % cols, i // cols, icon['s'], color=icon['c'], fontsize=12, ha='center',va='center',fontfamily='sans-serif')
         plt.tight_layout(); return self._render_fig_to_buffer(fig)
     def _generar_pictograma_explicacion(self, para_pdf=False) -> str:
-        s_res = "*"; res = self.resultados # Cambio a *
+        s_res = "*"; res = self.resultados
         items = [(res.ingreso.reserva, f"{s_res} Reserva Ingreso ({res.ingreso.reserva})"), (res.ingreso.general, f"● General Ingreso ({res.ingreso.general})"), (res.ascenso.reserva, f"{s_res} Reserva Ascenso ({res.ascenso.reserva})"), (res.ascenso.general, f"● General Ascenso ({res.ascenso.general})")]
         texto_items = "  |  ".join(text for count, text in items if count > 0)
         nota_escala = f" | Nota: Cada símbolo representa aprox. {self.escala_pictograma} vacantes." if self.escala_pictograma > 1 else ""
@@ -206,8 +211,9 @@ class GeneradorReporte:
         pdf.set_font('Helvetica', '', 12); pdf.cell(0, 8, self.nombre_entidad, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         pdf.set_font('Helvetica', '', 9); pdf.cell(0, 6, f"Generado: {fecha_generado}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C'); pdf.ln(8)
         pdf.chapter_title('Parámetros de la Simulación')
-        params_html = f"• Total Vacantes OPEC: {self.total_opec}\n• Opción de Cálculo: {self.datos_entrada.opcion_calculo_str}\n• Vacantes Ingreso: {self.datos_entrada.v_ingreso}\n• Vacantes Ascenso: {self.datos_entrada.v_ascenso}"
-        if self.datos_entrada.v_ascenso > 0: params_html += f"\n• ¿Existen servidores elegibles para ascenso?: {'Sí' if self.datos_entrada.hay_pcd_para_ascenso else 'No'}"
+        # CORRECCIÓN: Se reemplaza el caracter '•' por un guion '-'
+        params_html = f"- Total Vacantes OPEC: {self.total_opec}\n- Opción de Cálculo: {self.datos_entrada.opcion_calculo_str}\n- Vacantes Ingreso: {self.datos_entrada.v_ingreso}\n- Vacantes Ascenso: {self.datos_entrada.v_ascenso}"
+        if self.datos_entrada.v_ascenso > 0: params_html += f"\n- ¿Existen servidores elegibles para ascenso?: {'Sí' if self.datos_entrada.hay_pcd_para_ascenso else 'No'}"
         pdf.chapter_body_html(params_html); pdf.chapter_title('Resultados Numéricos'); pdf.add_pandas_table(self._preparar_datos_tabla())
         if buffer := self.graficos_img_buffer.get("unificado"): pdf.add_image_from_buffer(buffer, "Distribución General de Vacantes")
         if pdf.get_y() > 180: pdf.add_page()
@@ -228,11 +234,20 @@ class GeneradorReporte:
 # 3. INTERFAZ DE USUARIO CON STREAMLIT (REDiseñada)
 # ==============================================================================
 def main():
-    st.set_page_config(page_title="Simulador OPEC", page_icon="📊", layout="wide")
+    st.set_page_config(page_title="Simulador Reserva de Plazas PcD", page_icon="♿", layout="wide")
 
-    st.title("✨ Simulador Interactivo de Vacantes OPEC")
-    st.markdown("Herramienta para calcular la distribución de vacantes y la reserva legal para Personas con Discapacidad (PcD).")
-    
+    # --- MEJORA DE UI: Título con Logo ---
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        # Asegúrate de haber subido 'logo.jpg' a tu repositorio de GitHub
+        try:
+            st.image("logo.jpg", width=120)
+        except Exception:
+            st.warning("No se encontró `logo.jpg`")
+    with col2:
+        st.title("Simulador para Reserva de Plazas para Personas con Discapacidad")
+        st.markdown("Herramienta para calcular la reserva legal de empleos según la OPEC.")
+
     st.sidebar.title("Acerca de")
     st.sidebar.info(CREDITOS_SIMULADOR.replace("\n", "\n\n"))
 
@@ -249,24 +264,26 @@ def main():
             st.subheader("🔀 2. Distribución de Vacantes")
             col1, col2 = st.columns([1, 1])
             with col1:
-                distribucion_tipo = st.radio("Método de distribución", options=['Automático (70/30)', 'Manual'], horizontal=True, label_visibility="collapsed")
+                distribucion_tipo = st.radio("Método de distribución", options=['Automático (70/30)', 'Manual'], horizontal=True)
             with col2:
                 ascenso_manual = st.number_input("Vacantes para Ascenso", min_value=0, max_value=total_vacantes, value=30, step=1, disabled=(distribucion_tipo == 'Automático (70/30)'))
             
             vacantes_ascenso = ascenso_manual if distribucion_tipo == 'Manual' else round(total_vacantes * 0.3)
             vacantes_ingreso = total_vacantes - vacantes_ascenso
             
-            st.metric(label="Resultado de la Distribución", value=f"{vacantes_ingreso} Ingreso", delta=f"{vacantes_ascenso} Ascenso", delta_color="off")
+            st.metric(label="Distribución Calculada", value=f"{vacantes_ingreso} Ingreso", delta=f"{vacantes_ascenso} Ascenso", delta_color="off")
 
         with st.container(border=True):
-            st.subheader("♿ 3. Condición para Ascenso")
+            st.subheader("♿ 3. Elegibilidad para Ascenso (PcD)")
             pcd_para_ascenso = True
             if vacantes_ascenso > 0:
-                 pcd_para_ascenso = st.radio(
-                    "¿Existen servidores con derechos de carrera Y discapacidad que cumplen requisitos para ascenso?",
-                    options=[('Sí', True), ('No', False)], index=0, horizontal=True, label_visibility="collapsed")
+                 # --- MEJORA DE UI: Se eliminan los 'True'/'False' visibles ---
+                 respuesta_elegibilidad = st.radio(
+                    "¿Existen servidores con derechos de carrera y discapacidad que cumplen con los requisitos para los cargos de ascenso?",
+                    options=['Sí, existen servidores elegibles', 'No, no existen servidores elegibles'], index=0)
+                 pcd_para_ascenso = (respuesta_elegibilidad == 'Sí, existen servidores elegibles')
             else:
-                st.info("No hay vacantes de ascenso para evaluar esta condición.")
+                st.info("No hay vacantes de ascenso, por lo tanto no aplica esta condición.")
 
         st.markdown("") # Espacio
         submit_button = st.form_submit_button(label="🚀 Generar Simulación y Reporte", use_container_width=True, type="primary")
