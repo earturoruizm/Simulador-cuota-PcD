@@ -1,8 +1,8 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v15 (VERSIÓN FINAL, ESTABLE Y SIMPLIFICADA)
+# CÓDIGO DEL SIMULADOR v16 (VERSIÓN FINAL, ESTABLE Y DIRECTA)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
-# Adaptación y corrección final por: Asistente de IA de Google
+# Adaptación final por: Asistente de IA de Google
 # ==============================================================================
 import math
 import pandas as pd
@@ -127,7 +127,6 @@ class GeneradorReporte:
     def __init__(self, nombre_entidad: str, datos_entrada: DatosEntrada, resultados: ResultadosSimulacion):
         self.nombre_entidad = nombre_entidad; self.datos_entrada = datos_entrada; self.resultados = resultados
         self.total_opec = datos_entrada.total_opec
-        self.grafico_principal_buffer = self.crear_grafico_barras_apiladas()
     def _calcular_porcentaje_str(self, valor: float, total: float) -> str: return "0.0%" if total <= 0 else f"{(valor / total) * 100:.1f}%"
     def _preparar_datos_tabla(self) -> pd.DataFrame:
         i, a = self.resultados.ingreso, self.resultados.ascenso; tr, tg = i.reserva + a.reserva, i.general + a.general
@@ -168,17 +167,6 @@ class GeneradorReporte:
         legend_patches = [mpatches.Patch(color=PALETA_COLORES['ingreso_general'], label='Vacantes Generales'), mpatches.Patch(color=PALETA_COLORES['ingreso_reserva'], label='Vacantes Reserva PcD')]
         ax.legend(handles=legend_patches, loc='lower center', ncol=2, bbox_to_anchor=(0.5, -0.3), frameon=False, fontsize=11)
         plt.tight_layout(pad=1); return self._render_fig_to_buffer(fig)
-    def get_reporte_html(self) -> str:
-        from base64 import b64encode
-        def img(b: Optional[io.BytesIO]) -> str: return f'<img src="data:image/png;base64,{b64encode(b.getvalue()).decode("utf-8")}" style="width:100%;max-width:700px;margin:auto;display:block;"/>' if b else ""
-        grafico_html = img(self.grafico_principal_buffer)
-        return f"""<div style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:20px;background:#f9f9f9;color:{PALETA_COLORES['texto_oscuro']};">
-            <h1 style="color:{PALETA_COLORES['fondo_titulo']};border-bottom:2px solid {PALETA_COLORES['acento']};padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>
-            <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Distribución Gráfica de Vacantes</h2><div style="background:#fff;padding:15px;border-radius:4px;">{grafico_html}</div>
-            <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Resumen de Distribución</h2>{self.generar_tabla_html()}
-            <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Notas y Advertencias Clave</h2><div style="background:#fff;border-left:5px solid {PALETA_COLORES['acento']};padding:1px 15px;border-radius:4px;">{self.generar_mensajes_html()}</div>
-            <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Conclusión y Pasos Siguientes</h2><div style="background:{PALETA_COLORES['fondo_hover']};padding:15px;border-radius:4px;">{self._generar_conclusion_base()}</div>
-        </div>"""
     def generar_pdf_en_memoria(self) -> Tuple[str, bytes]:
         pdf = PDF_Reporte(); pdf.set_auto_page_break(auto=True, margin=20); pdf.alias_nb_pages(); pdf.add_page()
         fecha_generado = datetime.now(BOGOTA_TZ).strftime('%d/%m/%Y %H:%M:%S %Z') if BOGOTA_TZ else datetime.now().strftime('%d/%m/%Y %H:%M:%S')
@@ -192,7 +180,7 @@ class GeneradorReporte:
         pdf.chapter_title('Resultados Numéricos'); pdf.add_pandas_table(self._preparar_datos_tabla())
         if self.total_opec > 0:
             pdf.chapter_title("Distribución Gráfica de Vacantes")
-            if buffer := self.grafico_principal_buffer: pdf.add_image_from_buffer(buffer, "")
+            if buffer := self.crear_grafico_barras_apiladas(): pdf.add_image_from_buffer(buffer, "")
         if pdf.get_y() > 200: pdf.add_page()
         pdf.chapter_title('Notas y Advertencias del Cálculo'); pdf.chapter_body_html(self.generar_mensajes_html())
         pdf.chapter_title('Conclusión y Pasos Siguientes'); pdf.chapter_body_html(self._generar_conclusion_base())
@@ -218,6 +206,7 @@ def main():
     st.divider()
 
     # --- FORMULARIO DE ENTRADA ---
+    # Este contenedor agrupa todas las entradas del usuario
     with st.container(border=True):
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
@@ -248,10 +237,13 @@ def main():
         
         # --- BOTÓN DE ACCIÓN ---
         if st.button(label="🚀 Generar Simulación y Reporte", use_container_width=True, type="primary"):
-            if not nombre_entidad.strip(): st.error("⚠️ **Error:** El nombre de la entidad es obligatorio.")
-            elif vacantes_ingreso < 0: st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo.")
+            # Validación de entradas
+            if not nombre_entidad.strip(): 
+                st.error("⚠️ **Error:** El nombre de la entidad es obligatorio.")
+            elif vacantes_ingreso < 0: 
+                st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo.")
             else:
-                # Se encapsula toda la lógica de generación y visualización dentro del click del botón
+                # Si la validación es correcta, se procede a la lógica de negocio
                 with st.spinner("⚙️ Procesando, por favor espere..."):
                     datos_entrada = DatosEntrada(
                         total_opec=total_vacantes, 
@@ -265,12 +257,25 @@ def main():
 
                 st.success("¡Simulación completada!")
                 
-                # LÍNEA CRÍTICA: Se renderiza el HTML inmediatamente después de ser generado.
-                st.markdown(reporte.get_reporte_html(), unsafe_allow_html=True)
+                # ==================================================================
+                # CORRECCIÓN DEFINITIVA: Separar la generación del HTML de su renderizado
+                # 1. Se obtiene la cadena de texto HTML del objeto reporte.
+                html_del_reporte = reporte.get_reporte_html()
                 
+                # 2. Se usa st.markdown para renderizar esa cadena de texto.
+                st.markdown(html_del_reporte, unsafe_allow_html=True)
+                # ==================================================================
+                
+                # Generación y descarga del PDF
                 pdf_filename, pdf_bytes = reporte.generar_pdf_en_memoria()
                 if pdf_bytes:
-                    st.download_button(label="📄 Descargar Reporte Completo en PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf", use_container_width=True)
+                    st.download_button(
+                        label="📄 Descargar Reporte Completo en PDF", 
+                        data=pdf_bytes, 
+                        file_name=pdf_filename, 
+                        mime="application/pdf", 
+                        use_container_width=True
+                    )
 
     # --- PIE DE PÁGINA ---
     st.divider()
@@ -281,4 +286,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
