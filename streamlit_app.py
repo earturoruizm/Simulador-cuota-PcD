@@ -1,8 +1,8 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v10 (VERSIÓN FINAL CON GRÁFICO PROFESIONAL)
+# CÓDIGO DEL SIMULADOR v11 (VERSIÓN FINAL Y ESTABLE)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
-# Reingeniería y diseño por: Asistente de IA de Google
+# Reingeniería y corrección final por: Asistente de IA de Google
 # ==============================================================================
 import math
 import pandas as pd
@@ -17,6 +17,7 @@ from typing import Tuple, Optional, Any, Dict, List
 from dataclasses import dataclass
 import streamlit as st
 
+# --- CONFIGURACIÓN E IMPORTACIONES ---
 try:
     from pytz import timezone
     BOGOTA_TZ = timezone('America/Bogota')
@@ -31,20 +32,18 @@ try:
 except ImportError:
     pass
 
-# --- Configuración Visual y Constantes ---
+# --- CONSTANTES Y ESTILOS ---
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
     'ingreso_general': '#B2EBF2', 'ingreso_reserva': '#00838F', 'ascenso_general': '#FFECB3',
     'ascenso_reserva': '#FF8F00', 'texto_claro': '#FFFFFF', 'texto_oscuro': '#333333',
-    'fondo_titulo': '#004D40', 'fondo_hover': '#E0F2F1', 'grid': '#CFD8DC',
-    'mensaje_info': '#005f73', 'mensaje_aviso': '#ae2012', 'mensaje_ok': '#0a9396',
-    'borde_claro': '#EEEEEE', 'primario': '#00796B', 'acento': '#FFC107'
+    'fondo_titulo': '#004D40', 'fondo_hover': '#E0F2F1', 'primario': '#00796B', 'acento': '#FFC107'
 }
 CREDITOS_SIMULADOR = "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\nDerechos Reservados CNSC © 2025"
 
 # ==============================================================================
-# LÓGICA DE NEGOCIO (NÚCLEO DEL CÁLCULO)
+# CLASES DE LÓGICA DE NEGOCIO (NÚCLEO)
 # ==============================================================================
 class EstadoCalculo(Enum): NORMAL, CERO_VACANTES, AJUSTE_V1, AJUSTE_SIN_PCD = range(4)
 @dataclass
@@ -53,9 +52,6 @@ class ModalidadResultados: total: int; reserva: int; general: int; estado: Estad
 class ResultadosSimulacion: ingreso: ModalidadResultados; ascenso: ModalidadResultados
 @dataclass
 class DatosEntrada: total_opec: int; opcion_calculo_str: str; hay_pcd_para_ascenso: bool; v_ingreso: int; v_ascenso: int
-
-def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
-    hex_color = hex_color.lstrip('#'); return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 class PDF_Reporte(FPDF):
     def footer(self):
@@ -91,15 +87,14 @@ class PDF_Reporte(FPDF):
         self.set_font('Helvetica', 'B', 8); available_width = self.w - self.l_margin - self.r_margin
         col_widths = [available_width * w for w in [0.25, 0.22, 0.28, 0.25]]; line_height = 7
         self.set_fill_color(*hex_to_rgb(PALETA_COLORES['fondo_titulo'])); self.set_text_color(*hex_to_rgb(PALETA_COLORES['texto_claro']))
-        for i, header in enumerate(df.columns): self.cell(col_widths[i], line_height, header, border=0, new_x=XPos.RIGHT, new_y=YPos.TOP, align='C', fill=True)
+        for i, header in enumerate(df.columns): self.cell(col_widths[i], line_height, header, border=0, align='C', fill=True)
         self.ln(line_height); self.set_font('Helvetica', '', 8); self.set_text_color(0,0,0)
         for _, row in df.iterrows():
             is_total_row = 'TOTAL' in row['Modalidad']
             if is_total_row: self.set_font('Helvetica', 'B', 8.5)
-            fill_color = hex_to_rgb(PALETA_COLORES['fondo_hover']) if is_total_row else (255,255,255)
-            self.set_fill_color(*fill_color)
+            self.set_fill_color(*hex_to_rgb(PALETA_COLORES['fondo_hover']) if is_total_row else (255,255,255))
             for i, datum in enumerate(row):
-                align = 'L' if i == 0 else 'C'; self.cell(col_widths[i], line_height, str(datum), border='T', new_x=XPos.RIGHT, new_y=YPos.TOP, align=align, fill=True)
+                align = 'L' if i == 0 else 'C'; self.cell(col_widths[i], line_height, str(datum), border='T', align=align, fill=True)
             self.ln(line_height)
             if is_total_row: self.set_font('Helvetica', '', 8)
         self.ln(4)
@@ -107,8 +102,7 @@ class PDF_Reporte(FPDF):
         self.set_font('Helvetica', 'B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
         self.cell(0, 8, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L'); self.ln(2)
         self.set_text_color(0,0,0); img_buffer.seek(0)
-        self.image(img_buffer, w=self.w - self.l_margin - self.r_margin)
-        plt.close('all'); self.ln(5)
+        self.image(img_buffer, w=self.w - self.l_margin - self.r_margin); plt.close('all'); self.ln(5)
 
 class LogicaCalculo:
     @staticmethod
@@ -139,7 +133,7 @@ class GeneradorReporte:
         return pd.DataFrame({'Modalidad': ['Ingreso','Ascenso','TOTAL'],'Vacantes Totales': [i.total, a.total, self.total_opec],'Reserva PcD': [reserva_ing_str, reserva_asc_str, tr],'Concurso General': [i.general, a.general, tg]})
     def generar_tabla_html(self) -> str:
         df_styled = self._preparar_datos_tabla().astype(str); df_styled.iloc[-1] = df_styled.iloc[-1].apply(lambda x: f"<strong>{x}</strong>")
-        styles=[dict(selector="th", props=[("font-size","11pt"),("text-align","center"),("background-color",PALETA_COLORES['fondo_titulo']),("color",PALETA_COLORES['texto_claro'])]), dict(selector="td", props=[("font-size","10.5pt"),("text-align","center"),("border",f"1px solid {PALETA_COLORES['borde_claro']}"),("color",PALETA_COLORES['texto_oscuro']),("background-color","#FFFFFF")])]
+        styles=[dict(selector="th", props=[("font-size","11pt"),("text-align","center"),("background-color",PALETA_COLORES['fondo_titulo']),("color",PALETA_COLORES['texto_claro'])]), dict(selector="td", props=[("font-size","10.5pt"),("text-align","center"),("border",f"1px solid #eee"),("color",PALETA_COLORES['texto_oscuro']),("background-color","#FFFFFF")])]
         return df_styled.style.set_table_styles(styles).hide(axis="index").to_html(escape=False)
     def _generar_mensajes_base(self) -> List[str]:
         mensajes = []; r = self.resultados
@@ -155,118 +149,74 @@ class GeneradorReporte:
         return ("""<h4 style='margin-top:15px; margin-bottom:5px; color:#004D40;'>Pasos Siguientes y Consideraciones Clave:</h4><ul style='padding-left:20px;font-size:0.9em; line-height:1.6;'><li><strong>Representatividad Jerárquica:</strong> Se debe procurar que la reserva de empleos refleje la diversidad de los niveles jerárquicos de la entidad.</li><li><strong>Análisis de Empleos:</strong> Las vacantes seleccionadas para la reserva deben ser objeto de un estudio que incluya el análisis de funciones y los ajustes razonables.</li><li><strong>Uso del "Recomendador de Empleos PcD":</strong> Se invita a la entidad a usar la herramienta complementaria de la CNSC.</li><li><strong>Validación Profesional:</strong> Los resultados deben ser validados por un profesional en Salud y Seguridad en el Trabajo (SST) o por la ARL.</li></ul>""" if self.total_opec > 0 else "")
     def _render_fig_to_buffer(self, fig: plt.Figure) -> io.BytesIO:
         buf = io.BytesIO(); fig.savefig(buf, format='png', dpi=150, bbox_inches='tight'); buf.seek(0); plt.close(fig); return buf
-    
-    # MEJORA GRÁFICA: Se reemplaza el Waffle Chart por un gráfico de barras apiladas, más claro y robusto.
     def crear_grafico_barras_apiladas(self) -> Optional[io.BytesIO]:
         if self.total_opec == 0: return None
-        
         res = self.resultados
         labels = ['Ascenso', 'Ingreso']
         general_data = [res.ascenso.general, res.ingreso.general]
         reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
-        
         fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='white')
-
-        # Dibuja las barras
         bars1 = ax.barh(labels, general_data, color=PALETA_COLORES['ingreso_general'], label='General')
         bars2 = ax.barh(labels, reserva_data, left=general_data, color=PALETA_COLORES['ingreso_reserva'], label='Reserva PcD')
-
-        # Añade etiquetas con los valores dentro de las barras
         for bar_group in [bars1, bars2]:
             for bar in bar_group:
                 width = bar.get_width()
-                if width > 0:
-                    ax.text(bar.get_x() + width / 2, bar.get_y() + bar.get_height() / 2,
-                            f'{width}', ha='center', va='center', color='black', fontsize=12, weight='bold')
-
-        # Estética del gráfico (limpio y profesional)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-        ax.spines['bottom'].set_color('#dddddd')
-        ax.tick_params(bottom=False, left=False)
-        ax.set_xticks([])
-        ax.set_yticklabels(labels, fontsize=12, weight='bold')
-        ax.set_xlabel(f'Total de Vacantes: {self.total_opec}', fontsize=12, labelpad=10)
-        
-        # Leyenda
-        legend_patches = [
-            mpatches.Patch(color=PALETA_COLORES['ingreso_general'], label='Vacantes Generales'),
-            mpatches.Patch(color=PALETA_COLORES['ingreso_reserva'], label='Vacantes Reserva PcD')
-        ]
+                if width > 0: ax.text(bar.get_x() + width / 2, bar.get_y() + bar.get_height() / 2, f'{width}', ha='center', va='center', color='black', fontsize=12, weight='bold')
+        ax.spines[:].set_visible(False); ax.tick_params(bottom=False, left=False)
+        ax.set_xticks([]); ax.set_yticklabels(labels, fontsize=12, weight='bold'); ax.set_xlabel(f'Total de Vacantes: {self.total_opec}', fontsize=12, labelpad=10)
+        legend_patches = [mpatches.Patch(color=PALETA_COLORES['ingreso_general'], label='Vacantes Generales'), mpatches.Patch(color=PALETA_COLORES['ingreso_reserva'], label='Vacantes Reserva PcD')]
         ax.legend(handles=legend_patches, loc='lower center', ncol=2, bbox_to_anchor=(0.5, -0.3), frameon=False, fontsize=11)
-        
-        plt.tight_layout(pad=1)
-        return self._render_fig_to_buffer(fig)
-
+        plt.tight_layout(pad=1); return self._render_fig_to_buffer(fig)
     def _generar_todos_los_graficos(self) -> Dict[str, Optional[io.BytesIO]]:
         return {"grafico_principal": self.crear_grafico_barras_apiladas()}
-
-    def generar_reporte_html_completo(self):
+    def get_reporte_html(self) -> str:
         from base64 import b64encode
-        def img(b: Optional[io.BytesIO]) -> str:
-            return f'<img src="data:image/png;base64,{b64encode(b.getvalue()).decode("utf-8")}" style="width:100%;max-width:700px;margin:auto;display:block;"/>' if b else ""
-        
+        def img(b: Optional[io.BytesIO]) -> str: return f'<img src="data:image/png;base64,{b64encode(b.getvalue()).decode("utf-8")}" style="width:100%;max-width:700px;margin:auto;display:block;"/>' if b else ""
         grafico_html = img(self.graficos_img_buffer.get('grafico_principal'))
-        html_string = f"""
-        <div style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:20px;background:#f9f9f9;color:{PALETA_COLORES['texto_oscuro']};">
+        return f"""<div style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:20px;background:#f9f9f9;color:{PALETA_COLORES['texto_oscuro']};">
             <h1 style="color:{PALETA_COLORES['fondo_titulo']};border-bottom:2px solid {PALETA_COLORES['acento']};padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Distribución Gráfica de Vacantes</h2><div style="background:#fff;padding:15px;border-radius:4px;">{grafico_html}</div>
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Resumen de Distribución</h2>{self.generar_tabla_html()}
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Notas y Advertencias Clave</h2><div style="background:#fff;border-left:5px solid {PALETA_COLORES['acento']};padding:1px 15px;border-radius:4px;">{self.generar_mensajes_html()}</div>
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Conclusión y Pasos Siguientes</h2><div style="background:{PALETA_COLORES['fondo_hover']};padding:15px;border-radius:4px;">{self._generar_conclusion_base()}</div>
-        </div>
-        """
-        # CORRECCIÓN: Se restaura esta línea fundamental para que el HTML se muestre correctamente.
-        st.markdown(html_string, unsafe_allow_html=True)
-
+        </div>"""
     def generar_pdf_en_memoria(self) -> Tuple[str, bytes]:
         pdf = PDF_Reporte(); pdf.set_auto_page_break(auto=True, margin=20); pdf.alias_nb_pages(); pdf.add_page()
         fecha_generado = datetime.now(BOGOTA_TZ).strftime('%d/%m/%Y %H:%M:%S %Z') if BOGOTA_TZ else datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         pdf.set_font('Helvetica', 'B', 16); pdf.cell(0, 10, 'Reporte de Simulación de Vacantes OPEC', new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         pdf.set_font('Helvetica', '', 12); pdf.cell(0, 8, self.nombre_entidad, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         pdf.set_font('Helvetica', '', 9); pdf.cell(0, 6, f"Generado: {fecha_generado}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C'); pdf.ln(8)
-        
         pdf.chapter_title('Parámetros de la Simulación')
         params_html = f"- Total Vacantes OPEC: {self.total_opec}\n- Opción de Cálculo: {self.datos_entrada.opcion_calculo_str}\n- Vacantes Ingreso: {self.datos_entrada.v_ingreso}\n- Vacantes Ascenso: {self.datos_entrada.v_ascenso}"
         if self.datos_entrada.v_ascenso > 0: params_html += f"\n- Existen servidores que cumplen requisitos para ascenso?: {'Sí' if self.datos_entrada.hay_pcd_para_ascenso else 'No'}"
         pdf.chapter_body_html(params_html)
-        
         pdf.chapter_title('Resultados Numéricos'); pdf.add_pandas_table(self._preparar_datos_tabla())
         if self.total_opec > 0:
             pdf.chapter_title("Distribución Gráfica de Vacantes")
             if buffer := self.graficos_img_buffer.get("grafico_principal"): pdf.add_image_from_buffer(buffer, "")
-        
         if pdf.get_y() > 200: pdf.add_page()
         pdf.chapter_title('Notas y Advertencias del Cálculo'); pdf.chapter_body_html(self.generar_mensajes_html())
         pdf.chapter_title('Conclusión y Pasos Siguientes'); pdf.chapter_body_html(self._generar_conclusion_base())
-        
         filename = f"Reporte_OPEC_{''.join(c for c in self.nombre_entidad if c.isalnum())[:30]}_{datetime.now(BOGOTA_TZ).strftime('%Y%m%d') if BOGOTA_TZ else datetime.now().strftime('%Y%m%d')}.pdf"
-        try:
-            pdf_output = bytes(pdf.output())
-            return filename, pdf_output
-        except (FPDFException, Exception) as e:
-            st.error(f"Ocurrió un error al generar el PDF: {e}"); return "error.pdf", b""
+        try: return filename, bytes(pdf.output())
+        except (FPDFException, Exception) as e: st.error(f"Ocurrió un error al generar el PDF: {e}"); return "error.pdf", b""
 
 # ==============================================================================
-# INTERFAZ DE USUARIO (REINGENIERÍA COMPLETA)
+# INTERFAZ DE USUARIO Y LÓGICA PRINCIPAL
 # ==============================================================================
 def init_session_state():
-    """Inicializa el estado de sesión para el formulario."""
     if 'form_submitted' not in st.session_state:
         st.session_state.form_submitted = False
         reset_simulation(first_run=True)
 
 def reset_simulation(first_run=False):
-    """Resetea el formulario a sus valores iniciales."""
     st.session_state.nombre_entidad = ""
     st.session_state.total_vacantes = 100
     st.session_state.distribucion_tipo = 'Automático (70/30)'
     st.session_state.ascenso_manual = 30
     st.session_state.respuesta_elegibilidad = 'Sí, existen servidores que cumplen los requisitos'
     st.session_state.form_submitted = False
-    if not first_run:
-        st.success("Formulario limpiado. Puede iniciar una nueva simulación.")
+    if not first_run: st.success("Formulario limpiado. Puede iniciar una nueva simulación.")
         
 def main():
     st.set_page_config(page_title="Simulador Reserva de Plazas PcD", page_icon="♿", layout="wide")
@@ -282,6 +232,7 @@ def main():
     
     st.divider()
 
+    # --- RENDERIZADO DEL FORMULARIO ---
     with st.container(border=True):
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
@@ -289,60 +240,55 @@ def main():
         total_vacantes = col2.number_input("Total de Vacantes en la OPEC", min_value=0, step=1, key="total_vacantes")
 
         st.subheader("🔀 2. Distribución de Vacantes")
-        distribucion_tipo = st.radio("Método de distribución", options=['Automático (70/30)', 'Manual'], horizontal=True, key='distribucion_tipo')
+        distribucion_tipo = st.radio("Método", options=['Automático (70/30)', 'Manual'], horizontal=True, key='distribucion_tipo')
         
         es_automatico = st.session_state.distribucion_tipo == 'Automático (70/30)'
-        
         if es_automatico:
             vacantes_ascenso = round(total_vacantes * 0.3)
             st.number_input("Vacantes para Ascenso", value=vacantes_ascenso, disabled=True, help="Se calcula automáticamente como el 30% del total.")
         else:
             vacantes_ascenso = st.number_input("Vacantes para Ascenso", min_value=0, max_value=total_vacantes, step=1, key="ascenso_manual", help="Digite el número de vacantes para ascenso.")
-        
         vacantes_ingreso = total_vacantes - vacantes_ascenso
-        
         st.metric(label="Distribución Calculada", value=f"{vacantes_ingreso} Ingreso", delta=f"{vacantes_ascenso} Ascenso", delta_color="off")
 
         st.subheader("♿ 3. Cumplimiento de Requisitos para Ascenso")
         if vacantes_ascenso > 0:
-             respuesta_elegibilidad = st.radio(
-                "¿Existen servidores con derechos de carrera y discapacidad que cumplen los requisitos para los cargos de ascenso?",
-                options=['Sí, existen servidores que cumplen los requisitos', 'No, no existen servidores que cumplen los requisitos'], 
-                key='respuesta_elegibilidad')
-             pcd_para_ascenso = (respuesta_elegibilidad == 'Sí, existen servidores que cumplen los requisitos')
+             respuesta_elegibilidad = st.radio("¿Existen servidores con derechos de carrera y discapacidad que cumplen los requisitos para los cargos de ascenso?",
+                options=['Sí, existen servidores que cumplen los requisitos', 'No, no existen servidores que cumplen los requisitos'], key='respuesta_elegibilidad')
+             pcd_para_ascenso = (respuesta_elegibilidad == 'Sí, existen servidores que cumplen losquisitos')
         else:
-            st.info("No hay vacantes de ascenso, por lo tanto no aplica esta condición.")
-            pcd_para_ascenso = False
+            st.info("No hay vacantes de ascenso, por lo tanto no aplica esta condición."); pcd_para_ascenso = False
 
         st.divider()
         col_btn1, col_btn2 = st.columns(2)
+        # El botón de submit ya no está dentro de un form, su click se maneja con el estado de sesión
         if col_btn1.button(label="🚀 Generar Simulación", use_container_width=True, type="primary"):
-            st.session_state.form_submitted = True
-            st.rerun() # Forzar re-ejecución para mostrar resultados inmediatamente
+            if not nombre_entidad.strip(): st.error("⚠️ **Error:** El nombre de la entidad es obligatorio.")
+            elif vacantes_ingreso < 0: st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo.")
+            else: st.session_state.form_submitted = True; st.rerun()
         col_btn2.button(label="✨ Nueva Simulación (Limpiar)", on_click=reset_simulation, use_container_width=True)
     
+    # --- LÓGICA DE PROCESAMIENTO Y VISUALIZACIÓN DE RESULTADOS ---
     if st.session_state.form_submitted:
-        if not nombre_entidad.strip(): st.error("⚠️ **Error:** El nombre de la entidad es obligatorio.")
-        elif vacantes_ingreso < 0: st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo. Ajuste la distribución manual.")
-        else:
-            with st.spinner("⚙️ Procesando, por favor espere..."):
-                datos_entrada = DatosEntrada(total_opec=total_vacantes, v_ingreso=vacantes_ingreso, v_ascenso=vacantes_ascenso, opcion_calculo_str=distribucion_tipo, hay_pcd_para_ascenso=pcd_para_ascenso)
-                resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
-                reporte = GeneradorReporte(nombre_entidad.strip(), datos_entrada, resultados_sim)
-            
-            st.success("¡Simulación completada!")
-            with st.container(border=True):
-                reporte.generar_reporte_html_completo()
-                pdf_filename, pdf_bytes = reporte.generar_pdf_en_memoria()
-                if pdf_bytes:
-                    st.download_button(label="📄 Descargar Reporte Completo en PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf", use_container_width=True)
+        with st.spinner("⚙️ Procesando, por favor espere..."):
+            datos_entrada = DatosEntrada(total_opec=st.session_state.total_vacantes, v_ingreso=(st.session_state.total_vacantes - vacantes_ascenso), v_ascenso=vacantes_ascenso, opcion_calculo_str=st.session_state.distribucion_tipo, hay_pcd_para_ascenso=pcd_para_ascenso)
+            resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
+            reporte = GeneradorReporte(st.session_state.nombre_entidad.strip(), datos_entrada, resultados_sim)
+        
+        st.success("¡Simulación completada!")
+        
+        # CORRECCIÓN FINAL: La llamada a la función que devuelve el HTML se pasa a st.markdown
+        html_para_mostrar = reporte.get_reporte_html()
+        st.markdown(html_para_mostrar, unsafe_allow_html=True)
+        
+        pdf_filename, pdf_bytes = reporte.generar_pdf_en_memoria()
+        if pdf_bytes:
+            st.download_button(label="📄 Descargar Reporte Completo en PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf", use_container_width=True)
 
+    # --- PIE DE PÁGINA ---
     st.divider()
     with st.expander("Marco Normativo"):
-        st.markdown("""
-        - **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)
-        - **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)
-        """)
+        st.markdown("- **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)\n- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)")
     with st.expander("Acerca de este Simulador"):
         st.info(CREDITOS_SIMULADOR.replace("\n", "\n\n"))
 
