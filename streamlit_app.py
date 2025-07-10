@@ -39,22 +39,10 @@ except ImportError:
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
-    # Paleta de visualización de datos (Gráficos) - Optimizada para contraste en fondo blanco
-    'ingreso_general': '#5BC0DE',  # Azul Info (más visible)
-    'ingreso_reserva': '#0275D8',  # Azul Primario (fuerte y claro)
-    'ascenso_general': '#F0AD4E',  # Naranja Warning
-    'ascenso_reserva': '#D9534F',  # Rojo Danger
-
-    # Paleta de UI (Interfaz de Usuario) - Profesional y de alto contraste
-    'primario': '#0275D8',        # Azul Primario (para títulos, botones)
-    'acento': '#F0AD4E',          # Naranja Warning (para divisores, alertas)
-    'fondo_app': '#F7F7F7',        # Gris muy claro y neutro
-    'fondo_seccion': '#FFFFFF',   # Blanco puro (para tarjetas y contenedores)
-    'fondo_hover': '#E9ECEF',      # Gris claro para efectos hover
-    'borde': '#CCCCCC',           # Gris estándar para bordes visibles
-    'texto_oscuro': '#292B2C',    # Casi negro, profesional (Jet)
-    'texto_claro': '#FFFFFF',     # Blanco puro
-    'fondo_titulo': '#292B2C'     # Fondo oscuro para encabezados de tabla
+    'ingreso_general': '#81D4FA', 'ingreso_reserva': '#01579B', 'ascenso_general': '#FFE082',
+    'ascenso_reserva': '#EF6C00', 'texto_claro': '#FFFFFF', 'texto_oscuro': '#000000',
+    'fondo_titulo': '#0277BD', 'fondo_hover': '#E3F2FD', 'primario': '#0288D1', 'acento': '#FFA000',
+    'fondo_app': '#F0F0F0', 'borde': '#BDBDBD', 'fondo_seccion': '#E0E0E0'
 }
 CREDITOS_SIMULADOR = (
     "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\n"
@@ -97,13 +85,13 @@ class PDF_Reporte(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font('Helvetica', 'I', 8)
-        self.set_text_color(128, 128, 128) # Gris oscuro para el pie de página del PDF
+        self.set_text_color(150, 150, 150)
         self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', align='R')
-        self.set_y(-20)
+        self.set_y(-18)
         self.set_x(self.l_margin)
         self.set_font('Helvetica', 'I', 7)
         for line in CREDITOS_SIMULADOR.replace("©", "(c)").split('\n'):
-            self.multi_cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+            self.cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.set_text_color(0, 0, 0)
 
     def chapter_title(self, text: str):
@@ -119,7 +107,7 @@ class PDF_Reporte(FPDF):
         self.set_font('Helvetica', '', 9)
         if BS4_AVAILABLE:
             text = BeautifulSoup(html_content.replace("</li>", "\n"), "html.parser") \
-                    .get_text(separator=" ")
+                       .get_text(separator=" ")
         else:
             import re
             text = re.sub(r'<br\s*/?>', '\n', html_content)
@@ -162,7 +150,7 @@ class PDF_Reporte(FPDF):
 
         # Filas de datos
         self.set_font('Helvetica', '', 8)
-        self.set_text_color(*hex_to_rgb(PALETA_COLORES['texto_oscuro']))
+        self.set_text_color(0, 0, 0)
         for _, row in df.iterrows():
             is_total_row = 'TOTAL' in row['Modalidad']
             if is_total_row:
@@ -333,7 +321,7 @@ class GeneradorReporte:
         if self.total_opec == 0:
             return ""
         return (
-            f"<h4 style='margin-top:15px; margin-bottom:5px; color:{PALETA_COLORES['primario']};'>"
+            "<h4 style='margin-top:15px; margin-bottom:5px; color:#004D40;'>"
             "Pasos Siguientes y Consideraciones Clave:</h4>"
             "<ul style='padding-left:20px;font-size:0.9em; line-height:1.6;'>"
             "<li><strong>Representatividad Jerárquica:</strong> Se debe procurar que la reserva de "
@@ -425,7 +413,7 @@ class GeneradorReporte:
             f"""<div style="font-family:sans-serif;border:1px solid {PALETA_COLORES['borde']};"""
             f"""border-radius:12px;padding:25px;background:{PALETA_COLORES['fondo_seccion']};box-shadow:0 4px 8px rgba(0,0,0,0.1);"""
             f"""color:{PALETA_COLORES['texto_oscuro']};">"""
-            f"""<h1 style="color:{PALETA_COLORES['primario']};"""
+            f"""<h1 style="color:{PALETA_COLORES['fondo_titulo']};"""
             f"""border-bottom:2px solid {PALETA_COLORES['acento']};"""
             f"""padding-bottom:10px;text-align:center;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
@@ -434,7 +422,7 @@ class GeneradorReporte:
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
             f"""Resumen de Distribución</h2><div style="overflow-x:auto;">{self.generar_tabla_html()}</div>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
-            f"""Notas y Advertencias Clave</h2><div style="background:{PALETA_COLORES['fondo_hover']};"""
+            f"""Notas y Advertencias Clave</h2><div style="background:{PALETA_COLORES['fondo_seccion']};"""
             f"""border-left:5px solid {PALETA_COLORES['acento']};padding:15px;"""
             f"""border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.05);">{self.generar_mensajes_html()}</div>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
@@ -527,46 +515,41 @@ def main():
                 background-color: {PALETA_COLORES['fondo_app']};
                 color: {PALETA_COLORES['texto_oscuro']};
             }}
-            /* Forzar color de texto en labels de radio buttons */
-            .stRadio > label {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            /* Forzar color de texto en el componente Metric */
-            [data-testid="stMetric"], [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            /* Estilo para placeholders */
-            ::placeholder {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-                opacity: 0.7;
-            }}
-            /* Estilo para el texto dentro de st.info */
-            [data-testid="stInfo"] {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
             .stButton > button {{
                 background-color: {PALETA_COLORES['primario']};
                 color: {PALETA_COLORES['texto_claro']};
                 border-radius: 8px;
                 padding: 10px 20px;
                 font-weight: bold;
-                border: 1px solid {PALETA_COLORES['primario']};
             }}
             .stButton > button:hover {{
                 background-color: {PALETA_COLORES['acento']};
-                color: {PALETA_COLORES['texto_claro']};
-                border: 1px solid {PALETA_COLORES['acento']};
+                color: {PALETA_COLORES['texto_oscuro']};
             }}
-            .stTextInput > div > div > input, .stNumberInput > div > div > input {{
+            .stTextInput > div > div > input {{
                 border-radius: 8px;
                 border: 1px solid {PALETA_COLORES['borde']};
                 padding: 10px;
-                background-color: {PALETA_COLORES['fondo_seccion']};
+                color: {PALETA_COLORES['texto_oscuro']};
+            }}
+            .stTextInput > div > div > input::placeholder {{
+                color: {PALETA_COLORES['texto_oscuro']};
+            }}
+            .stNumberInput > div > div > input {{
+                border-radius: 8px;
+                border: 1px solid {PALETA_COLORES['borde']};
+                padding: 10px;
                 color: {PALETA_COLORES['texto_oscuro']};
             }}
             .stRadio > div {{
                 flex-direction: row;
                 gap: 20px;
+            }}
+            .stRadio > label {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
+            .stRadio > label > div > p {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
             }}
             .stExpander {{
                 border-radius: 8px;
@@ -584,13 +567,18 @@ def main():
                 background-color: {PALETA_COLORES['fondo_hover']};
                 border-radius: 8px;
                 padding: 10px;
-                border: 1px solid {PALETA_COLORES['borde']};
             }}
-            [data-testid="stContainer"], [data-testid="stVerticalBlock"] {{
-                border-radius: 12px;
-                border: 1px solid {PALETA_COLORES['borde']};
-                padding: 20px;
-                background-color: {PALETA_COLORES['fondo_seccion']};
+            .stMetric label {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
+            .stMetric .stMetricValue {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
+            .stAlert {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
+            .stAlert > div {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
             }}
         </style>
         """,
@@ -611,7 +599,7 @@ def main():
     st.divider()
 
     # --- FORMULARIO DE ENTRADA ---
-    with st.container():
+    with st.container(border=True):
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
         nombre_entidad = col1.text_input(
