@@ -1,5 +1,5 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v6 (VERSIÓN DEFINITIVA CON TODAS LAS CORRECCIONES)
+# CÓDIGO DEL SIMULADOR v7 (VERSIÓN CON CORRECCIÓN DE BUGS DE LÓGICA Y PDF)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
 # Adaptación y corrección de bugs por: Asistente de IA de Google
@@ -126,20 +126,15 @@ class LogicaCalculo:
         if vacantes == 1: return 0, EstadoCalculo.AJUSTE_V1
         return math.ceil(vacantes * 0.07), EstadoCalculo.NORMAL
     
-    # BUG FIX: Lógica de cálculo reescrita para mayor claridad y corrección
     @staticmethod
     def determinar_resultados_finales(datos_entrada: DatosEntrada) -> ResultadosSimulacion:
         v_ingreso, v_ascenso = datos_entrada.v_ingreso, datos_entrada.v_ascenso
-        
-        # Cálculo para Ingreso (sin cambios)
         r_ing, e_ing = LogicaCalculo._calcular_reserva_individual(v_ingreso)
         
-        # Cálculo para Ascenso (con lógica corregida)
+        # BUG FIX: Lógica de cálculo reescrita para mayor claridad y corrección
         if v_ascenso > 0 and not datos_entrada.hay_pcd_para_ascenso:
-            # Si hay vacantes de ascenso, pero se indicó que NO hay personal elegible
             r_asc, e_asc = 0, EstadoCalculo.AJUSTE_SIN_PCD
         else:
-            # En cualquier otro caso (hay personal o no hay vacantes de ascenso), se calcula normalmente
             r_asc, e_asc = LogicaCalculo._calcular_reserva_individual(v_ascenso)
             
         return ResultadosSimulacion(
@@ -195,7 +190,7 @@ class GeneradorReporte:
         plt.tight_layout(rect=[0, 0, 1, 0.95]); return self._render_fig_to_buffer(fig)
     def _crear_pictograma(self) -> Optional[io.BytesIO]:
         if self.total_opec == 0: return None
-        res = self.resultados; max_ico = 150; s_res = "*"; s_gen = "o" # PDF FIX: Se usa 'o' en vez de '●'
+        res = self.resultados; max_ico = 150; s_res = "*"; s_gen = "o"
         self.escala_pictograma = 1 if self.total_opec <= max_ico else math.ceil(self.total_opec / max_ico)
         iconos = ([{'s':s_res,'c':PALETA_COLORES['ingreso_reserva']}]*round(res.ingreso.reserva/self.escala_pictograma) + [{'s':s_gen,'c':PALETA_COLORES['ingreso_general']}]*round(res.ingreso.general/self.escala_pictograma) + [{'s':s_res,'c':PALETA_COLORES['ascenso_reserva']}]*round(res.ascenso.reserva/self.escala_pictograma) + [{'s':s_gen,'c':PALETA_COLORES['ascenso_general']}]*round(res.ascenso.general/self.escala_pictograma))
         if not iconos: return None
@@ -204,7 +199,7 @@ class GeneradorReporte:
         for i, icon in enumerate(iconos): ax.text(i % cols, i // cols, icon['s'], color=icon['c'], fontsize=12, ha='center',va='center',fontfamily='sans-serif')
         plt.tight_layout(); return self._render_fig_to_buffer(fig)
     def _generar_pictograma_explicacion(self, para_pdf=False) -> str:
-        s_res = "*"; s_gen = "o"; res = self.resultados # PDF FIX: Se usa 'o' en vez de '●'
+        s_res = "*"; s_gen = "o"; res = self.resultados
         items = [(res.ingreso.reserva, f"{s_res} Reserva Ingreso ({res.ingreso.reserva})"), (res.ingreso.general, f"{s_gen} General Ingreso ({res.ingreso.general})"), (res.ascenso.reserva, f"{s_res} Reserva Ascenso ({res.ascenso.reserva})"), (res.ascenso.general, f"{s_gen} General Ascenso ({res.ascenso.general})")]
         texto_items = "  |  ".join(text for count, text in items if count > 0)
         nota_escala = f" | Nota: Cada símbolo representa aprox. {self.escala_pictograma} vacantes." if self.escala_pictograma > 1 else ""
@@ -238,12 +233,14 @@ class GeneradorReporte:
         pdf.chapter_title('Conclusión y Pasos Siguientes'); pdf.chapter_body_html(self._generar_conclusion_base())
         filename = f"Reporte_OPEC_{''.join(c for c in self.nombre_entidad if c.isalnum())[:30]}_{datetime.now(BOGOTA_TZ).strftime('%Y%m%d') if BOGOTA_TZ else datetime.now().strftime('%Y%m%d')}.pdf"
         try:
-            pdf_output = pdf.output(dest='S').encode('latin-1'); return filename, pdf_output
+            # BUG FIX: La salida de pdf.output() ya es 'bytes', no necesita .encode()
+            pdf_output = pdf.output()
+            return filename, pdf_output
         except (FPDFException, Exception) as e:
             st.error(f"Ocurrió un error al generar el PDF: {e}"); return "error.pdf", b""
 
 # ==============================================================================
-# 3. INTERFAZ DE USUARIO CON STREAMLIT (REDiseñada)
+# 3. INTERFAZ DE USUARIO CON STREAMLIT
 # ==============================================================================
 def main():
     st.set_page_config(page_title="Simulador Reserva de Plazas PcD", page_icon="♿", layout="wide")
@@ -272,21 +269,29 @@ def main():
 
         with st.container(border=True):
             st.subheader("🔀 2. Distribución de Vacantes")
-            distribucion_tipo = st.radio("Método de distribución", options=['Automático (70/30)', 'Manual'], horizontal=True)
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                distribucion_tipo = st.radio("Método de distribución", options=['Automático (70/30)', 'Manual'], horizontal=True)
             
-            # BUG FIX: Lógica mejorada para la entrada manual
-            if distribucion_tipo == 'Manual':
-                ascenso_manual = st.number_input("Vacantes para Ascenso", min_value=0, max_value=total_vacantes, value=30, step=1)
-                vacantes_ascenso = ascenso_manual
-            else:
-                vacantes_ascenso = round(total_vacantes * 0.3)
+            # BUG FIX: Lógica restaurada para permitir la edición en modo Manual
+            with col2:
+                es_automatico = (distribucion_tipo == 'Automático (70/30)')
+                valor_por_defecto_ascenso = round(total_vacantes * 0.3) if es_automatico else 30
+                ascenso_manual = st.number_input(
+                    "Vacantes para Ascenso", 
+                    min_value=0, 
+                    max_value=total_vacantes, 
+                    value=valor_por_defecto_ascenso, 
+                    step=1, 
+                    disabled=es_automatico
+                )
             
+            vacantes_ascenso = round(total_vacantes * 0.3) if es_automatico else ascenso_manual
             vacantes_ingreso = total_vacantes - vacantes_ascenso
             st.metric(label="Distribución Calculada", value=f"{vacantes_ingreso} Ingreso", delta=f"{vacantes_ascenso} Ascenso", delta_color="off")
 
         with st.container(border=True):
             st.subheader("♿ 3. Elegibilidad para Ascenso (PcD)")
-            pcd_para_ascenso = True
             if vacantes_ascenso > 0:
                  respuesta_elegibilidad = st.radio(
                     "¿Existen servidores con derechos de carrera y discapacidad que cumplen los requisitos para los cargos de ascenso?",
@@ -294,6 +299,7 @@ def main():
                  pcd_para_ascenso = (respuesta_elegibilidad == 'Sí, existen servidores elegibles')
             else:
                 st.info("No hay vacantes de ascenso, por lo tanto no aplica esta condición.")
+                pcd_para_ascenso = False
 
         st.markdown("---")
         submit_button = st.form_submit_button(label="🚀 Generar Simulación y Reporte", use_container_width=True, type="primary")
