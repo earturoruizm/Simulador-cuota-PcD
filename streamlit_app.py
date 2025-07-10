@@ -204,16 +204,20 @@ class GeneradorReporte:
 
     def generar_reporte_html_completo(self):
         from base64 import b64encode
-        def img(b: Optional[io.BytesIO]) -> str: return f'<img src="data:image/png;base64,{b64encode(b.getvalue()).decode("utf-8")}" style="width:100%;max-width:700px;margin:auto;display:block;"/>' if b else ""
+        def img(b: Optional[io.BytesIO]) -> str:
+            return f'<img src="data:image/png;base64,{b64encode(b.getvalue()).decode("utf-8")}" style="width:100%;max-width:700px;margin:auto;display:block;"/>' if b else ""
         
         grafico_html = img(self.graficos_img_buffer.get('grafico_principal'))
-        html_string = f"""<div style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:20px;background:#f9f9f9;color:{PALETA_COLORES['texto_oscuro']};">
+        html_string = f"""
+        <div style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:20px;background:#f9f9f9;color:{PALETA_COLORES['texto_oscuro']};">
             <h1 style="color:{PALETA_COLORES['fondo_titulo']};border-bottom:2px solid {PALETA_COLORES['acento']};padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Distribución Gráfica de Vacantes</h2><div style="background:#fff;padding:15px;border-radius:4px;">{grafico_html}</div>
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Resumen de Distribución</h2>{self.generar_tabla_html()}
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Notas y Advertencias Clave</h2><div style="background:#fff;border-left:5px solid {PALETA_COLORES['acento']};padding:1px 15px;border-radius:4px;">{self.generar_mensajes_html()}</div>
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Conclusión y Pasos Siguientes</h2><div style="background:{PALETA_COLORES['fondo_hover']};padding:15px;border-radius:4px;">{self._generar_conclusion_base()}</div>
-        </div>"""
+        </div>
+        """
+        # CORRECCIÓN: Se restaura esta línea fundamental para que el HTML se muestre correctamente.
         st.markdown(html_string, unsafe_allow_html=True)
 
     def generar_pdf_en_memoria(self) -> Tuple[str, bytes]:
