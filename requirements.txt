@@ -1,0 +1,6 @@
+streamlit
+pandas
+matplotlib
+fpdf2
+beautifulsoup4
+pytz
