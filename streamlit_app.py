@@ -1,27 +1,34 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v7 (VERSIÓN CON CORRECCIÓN DE BUGS DE LÓGICA Y PDF)
+# CÓDIGO DEL SIMULADOR v8 (ADAPTACIÓN FIEL DEL ORIGINAL CON CORRECCIONES)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
-# Adaptación y corrección de bugs por: Asistente de IA de Google
+# Adaptación a Streamlit por: Asistente de IA de Google
 # ==============================================================================
 import math
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import io
+import sys
 from datetime import datetime
+from pathlib import Path
 from enum import Enum
-from typing import Tuple, Optional, Any, Dict, List
+from typing import List, Dict, Tuple, Optional, Any
 from dataclasses import dataclass
 import streamlit as st
 
+# Se importa pytz para manejar la zona horaria de Colombia
 try:
     from pytz import timezone
     BOGOTA_TZ = timezone('America/Bogota')
 except ImportError:
     BOGOTA_TZ = None
+
+# FPDF2 para la generación de PDF
 from fpdf import FPDF, FPDFException
 from fpdf.enums import XPos, YPos
+
+# BeautifulSoup para limpiar HTML
 BS4_AVAILABLE = False
 try:
     from bs4 import BeautifulSoup
@@ -34,6 +41,7 @@ mpl.rcParams['figure.dpi'] = 120
 PDF_DPI = 150
 mpl.rcParams['font.family'] = 'sans-serif'
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
+
 PALETA_COLORES = {
     'ingreso_general': '#B2EBF2', 'ingreso_reserva': '#00838F', 'ascenso_general': '#FFECB3',
     'ascenso_reserva': '#FF8F00', 'texto_claro': '#FFFFFF', 'texto_oscuro': '#333333',
@@ -41,12 +49,11 @@ PALETA_COLORES = {
     'mensaje_info': '#005f73', 'mensaje_aviso': '#ae2012', 'mensaje_ok': '#0a9396',
     'borde_claro': '#EEEEEE', 'primario': '#00796B', 'acento': '#FFC107'
 }
+
 CREDITOS_SIMULADOR = "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\nDerechos Reservados CNSC © 2025"
 
-# ==============================================================================
-# 2. LÓGICA DE NEGOCIO Y CLASES
-# ==============================================================================
 class EstadoCalculo(Enum): NORMAL, CERO_VACANTES, AJUSTE_V1, AJUSTE_SIN_PCD = range(4)
+
 @dataclass
 class ModalidadResultados: total: int; reserva: int; general: int; estado: EstadoCalculo
 @dataclass
@@ -58,24 +65,38 @@ def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
     hex_color = hex_color.lstrip('#'); return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 class PDF_Reporte(FPDF):
+    def __init__(self, orientation: str = 'P', unit: str = 'mm', format: str = 'A4'):
+        super().__init__(orientation, unit, format)
+        self.set_margins(20, 20, 20)
+        self.active_font_family = 'Helvetica'
+        # La configuración de fuentes DejaVu se omite para compatibilidad con Streamlit Cloud
+        # Se usará Helvetica por defecto.
+
+    def set_active_font(self, style: str = '', size: Optional[float] = None):
+        self.set_font(self.active_font_family, style, size if size else self.font_size_pt)
+
     def footer(self):
-        self.set_y(-15); self.set_font('Helvetica', 'I', 8); self.set_text_color(150, 150, 150)
+        self.set_y(-15)
+        self.set_active_font('I', 8)
+        self.set_text_color(150, 150, 150)
         self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', align='R')
-        self.set_y(-18); self.set_x(self.l_margin); self.set_font('Helvetica', 'I', 7)
+        self.set_y(-18); self.set_x(self.l_margin); self.set_active_font('I', 7)
         for line in CREDITOS_SIMULADOR.replace("©", "(c)").split('\n'):
             self.cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.set_text_color(0,0,0)
 
     def chapter_title(self, text: str):
-        self.set_font('Helvetica', 'B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
+        self.set_active_font('B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
         self.cell(0, 8, text, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.set_draw_color(*hex_to_rgb(PALETA_COLORES['acento'])); self.line(self.get_x(), self.get_y(), self.get_x()+40, self.get_y())
-        self.ln(3); self.set_text_color(0,0,0)
+        self.ln(3)
+        self.set_text_color(0,0,0)
 
     def chapter_body_html(self, html_content: str):
-        self.set_font('Helvetica', '', 9)
+        self.set_active_font('', 9)
+        text = html_content
         if BS4_AVAILABLE:
-            processed_html = html_content.replace("</li>","\n").replace("</p>","\n").replace("<br>","\n").replace("</h4>","\n\n")
+            processed_html = text.replace("</li>","\n").replace("</p>","\n").replace("<br>","\n").replace("</h4>","\n\n")
             text = BeautifulSoup(processed_html, "html.parser").get_text(separator=" ")
         else:
             import re; text = re.sub(r'<br\s*/?>', '\n', text); text = re.sub(r'</(p|li|h4)>', '\n', text); text = re.sub(r'<[^>]+>', '', text)
@@ -86,7 +107,7 @@ class PDF_Reporte(FPDF):
             is_list_item = cleaned_paragraph.startswith(("•", "-"))
             prefix = "- " if is_list_item else ""
             if is_list_item: cleaned_paragraph = cleaned_paragraph[1:].strip()
-            self.set_font('Helvetica', style, 9)
+            self.set_active_font(style, 9)
             if prefix:
                 self.cell(4, 5, prefix)
                 self.multi_cell(0, 5, cleaned_paragraph, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
@@ -95,25 +116,25 @@ class PDF_Reporte(FPDF):
             self.ln(2)
 
     def add_pandas_table(self, df: pd.DataFrame):
-        self.set_font('Helvetica', 'B', 8); available_width = self.w - self.l_margin - self.r_margin
+        self.set_active_font('B', 8); available_width = self.w - self.l_margin - self.r_margin
         col_widths = [available_width * w for w in [0.25, 0.22, 0.28, 0.25]]; line_height = 7
         self.set_fill_color(*hex_to_rgb(PALETA_COLORES['fondo_titulo'])); self.set_text_color(*hex_to_rgb(PALETA_COLORES['texto_claro']))
         for i, header in enumerate(df.columns): self.cell(col_widths[i], line_height, header, border=0, new_x=XPos.RIGHT, new_y=YPos.TOP, align='C', fill=True)
-        self.ln(line_height); self.set_font('Helvetica', '', 8); self.set_text_color(0,0,0)
+        self.ln(line_height); self.set_active_font('', 8); self.set_text_color(0,0,0)
         for _, row in df.iterrows():
             is_total_row = 'TOTAL' in row['Modalidad']
-            if is_total_row: self.set_font('Helvetica', 'B', 8.5)
+            if is_total_row: self.set_active_font('B', 8.5)
             fill_color = hex_to_rgb(PALETA_COLORES['fondo_hover']) if is_total_row else (255,255,255)
             self.set_fill_color(*fill_color)
             for i, datum in enumerate(row):
                 align = 'L' if i == 0 else 'C'
                 self.cell(col_widths[i], line_height, str(datum), border='T', new_x=XPos.RIGHT, new_y=YPos.TOP, align=align, fill=True)
             self.ln(line_height)
-            if is_total_row: self.set_font('Helvetica', '', 8)
+            if is_total_row: self.set_active_font('', 8)
         self.ln(4)
 
     def add_image_from_buffer(self, img_buffer: io.BytesIO, title: str):
-        self.set_font('Helvetica', 'B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
+        self.set_active_font('B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
         self.cell(0, 8, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L'); self.ln(2)
         self.set_text_color(0,0,0)
         img_buffer.seek(0); self.image(img_buffer, w=self.w - self.l_margin - self.r_margin)
@@ -130,13 +151,7 @@ class LogicaCalculo:
     def determinar_resultados_finales(datos_entrada: DatosEntrada) -> ResultadosSimulacion:
         v_ingreso, v_ascenso = datos_entrada.v_ingreso, datos_entrada.v_ascenso
         r_ing, e_ing = LogicaCalculo._calcular_reserva_individual(v_ingreso)
-        
-        # BUG FIX: Lógica de cálculo reescrita para mayor claridad y corrección
-        if v_ascenso > 0 and not datos_entrada.hay_pcd_para_ascenso:
-            r_asc, e_asc = 0, EstadoCalculo.AJUSTE_SIN_PCD
-        else:
-            r_asc, e_asc = LogicaCalculo._calcular_reserva_individual(v_ascenso)
-            
+        r_asc, e_asc = (0, EstadoCalculo.AJUSTE_SIN_PCD) if v_ascenso > 0 and not datos_entrada.hay_pcd_para_ascenso else LogicaCalculo._calcular_reserva_individual(v_ascenso)
         return ResultadosSimulacion(
             ingreso=ModalidadResultados(total=v_ingreso, reserva=r_ing, general=max(0, v_ingreso - r_ing), estado=e_ing),
             ascenso=ModalidadResultados(total=v_ascenso, reserva=r_asc, general=max(0, v_ascenso - r_asc), estado=e_asc)
@@ -146,6 +161,7 @@ class GeneradorReporte:
     def __init__(self, nombre_entidad: str, datos_entrada: DatosEntrada, resultados: ResultadosSimulacion):
         self.nombre_entidad = nombre_entidad; self.datos_entrada = datos_entrada; self.resultados = resultados
         self.total_opec = datos_entrada.total_opec; self.escala_pictograma = 1
+        self.pdf_font_family = 'Helvetica'
         self.graficos_img_buffer = self._generar_todos_los_graficos()
     def _calcular_porcentaje_str(self, valor: float, total: float) -> str: return "0.0%" if total <= 0 else f"{(valor / total) * 100:.1f}%"
     def _preparar_datos_tabla(self) -> pd.DataFrame:
@@ -233,8 +249,8 @@ class GeneradorReporte:
         pdf.chapter_title('Conclusión y Pasos Siguientes'); pdf.chapter_body_html(self._generar_conclusion_base())
         filename = f"Reporte_OPEC_{''.join(c for c in self.nombre_entidad if c.isalnum())[:30]}_{datetime.now(BOGOTA_TZ).strftime('%Y%m%d') if BOGOTA_TZ else datetime.now().strftime('%Y%m%d')}.pdf"
         try:
-            # BUG FIX: La salida de pdf.output() ya es 'bytes', no necesita .encode()
-            pdf_output = pdf.output()
+            # BUG FIX: Se convierte el bytearray de salida a bytes, que es lo que espera st.download_button
+            pdf_output = bytes(pdf.output())
             return filename, pdf_output
         except (FPDFException, Exception) as e:
             st.error(f"Ocurrió un error al generar el PDF: {e}"); return "error.pdf", b""
@@ -258,6 +274,11 @@ def main():
     st.sidebar.title("Acerca de")
     st.sidebar.info(CREDITOS_SIMULADOR.replace("\n", "\n\n"))
 
+    # --- LÓGICA DE LA INTERFAZ ---
+    # Usamos st.session_state para manejar los cambios de la UI de forma fiable
+    if 'distribucion_tipo' not in st.session_state:
+        st.session_state.distribucion_tipo = 'Automático (70/30)'
+    
     with st.form(key="simulador_form"):
         with st.container(border=True):
             st.subheader("📝 1. Datos Generales")
@@ -269,24 +290,29 @@ def main():
 
         with st.container(border=True):
             st.subheader("🔀 2. Distribución de Vacantes")
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                distribucion_tipo = st.radio("Método de distribución", options=['Automático (70/30)', 'Manual'], horizontal=True)
             
-            # BUG FIX: Lógica restaurada para permitir la edición en modo Manual
-            with col2:
-                es_automatico = (distribucion_tipo == 'Automático (70/30)')
-                valor_por_defecto_ascenso = round(total_vacantes * 0.3) if es_automatico else 30
-                ascenso_manual = st.number_input(
+            # BUG FIX: Lógica de UI restaurada para que el modo Manual funcione correctamente
+            distribucion_tipo = st.radio(
+                "Método de distribución", 
+                options=['Automático (70/30)', 'Manual'], 
+                horizontal=True, 
+                key='distribucion_tipo'
+            )
+            
+            es_automatico = st.session_state.distribucion_tipo == 'Automático (70/30)'
+            
+            if es_automatico:
+                vacantes_ascenso = round(total_vacantes * 0.3)
+                st.number_input("Vacantes para Ascenso", value=vacantes_ascenso, disabled=True)
+            else:
+                vacantes_ascenso = st.number_input(
                     "Vacantes para Ascenso", 
                     min_value=0, 
                     max_value=total_vacantes, 
-                    value=valor_por_defecto_ascenso, 
-                    step=1, 
-                    disabled=es_automatico
+                    value=int(total_vacantes * 0.3), # Un valor inicial razonable
+                    step=1
                 )
-            
-            vacantes_ascenso = round(total_vacantes * 0.3) if es_automatico else ascenso_manual
+
             vacantes_ingreso = total_vacantes - vacantes_ascenso
             st.metric(label="Distribución Calculada", value=f"{vacantes_ingreso} Ingreso", delta=f"{vacantes_ascenso} Ascenso", delta_color="off")
 
@@ -309,8 +335,14 @@ def main():
         elif vacantes_ingreso < 0: st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo. Ajuste la distribución manual.")
         else:
             with st.spinner("⚙️ Procesando, por favor espere..."):
-                opcion_str = 'Automático (70/30)' if distribucion_tipo == 'Automático (70/30)' else 'Manual'
-                datos_entrada = DatosEntrada(total_opec=total_vacantes, v_ingreso=vacantes_ingreso, v_ascenso=vacantes_ascenso, opcion_calculo_str=opcion_str, hay_pcd_para_ascenso=pcd_para_ascenso)
+                opcion_str = st.session_state.distribucion_tipo
+                datos_entrada = DatosEntrada(
+                    total_opec=total_vacantes, 
+                    v_ingreso=vacantes_ingreso, 
+                    v_ascenso=vacantes_ascenso, 
+                    opcion_calculo_str=opcion_str, 
+                    hay_pcd_para_ascenso=pcd_para_ascenso
+                )
                 resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
                 reporte = GeneradorReporte(nombre_entidad.strip(), datos_entrada, resultados_sim)
             
@@ -320,7 +352,13 @@ def main():
                 reporte.generar_reporte_html_completo()
                 pdf_filename, pdf_bytes = reporte.generar_pdf_en_memoria()
                 if pdf_bytes:
-                    st.download_button(label="📄 Descargar Reporte Completo en PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf", use_container_width=True)
+                    st.download_button(
+                        label="📄 Descargar Reporte Completo en PDF", 
+                        data=pdf_bytes, 
+                        file_name=pdf_filename, 
+                        mime="application/pdf", 
+                        use_container_width=True
+                    )
 
 if __name__ == '__main__':
     main()
