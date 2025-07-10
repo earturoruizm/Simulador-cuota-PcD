@@ -1,5 +1,6 @@
+
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v15 (VERSIÓN FINAL, ESTABLE Y CON DISEÑO CORREGIDO)
+# CÓDIGO DEL SIMULADOR v15 (VERSIÓN FINAL, ESTABLE Y SIMPLIFICADA)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
 # Adaptación y corrección final por: Asistente de IA de Google
@@ -35,7 +36,7 @@ try:
 except ImportError:
     pass
 
-# --- CONSTANTES Y ESTILOS (PALETA VISUAL ESTABLE) ---
+# --- CONSTANTES Y ESTILOS (NUEVA PALETA VISUAL) ---
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
@@ -48,9 +49,7 @@ PALETA_COLORES = {
     'fondo_titulo': '#004D40', 
     'fondo_hover': '#E0F2F1', 
     'primario': '#00796B', 
-    'acento': '#FFC107',
-    'fondo_app': '#F5F5F5',
-    'borde': '#E0E0E0'
+    'acento': '#FFC107'
 }
 CREDITOS_SIMULADOR = (
     "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\n"
@@ -263,16 +262,14 @@ class GeneradorReporte:
                 ("font-size", "11pt"),
                 ("text-align", "center"),
                 ("background-color", PALETA_COLORES['fondo_titulo']),
-                ("color", PALETA_COLORES['texto_claro']),
-                ("padding", "8px")
+                ("color", PALETA_COLORES['texto_claro'])
             ]),
             dict(selector="td", props=[
                 ("font-size", "10.5pt"),
                 ("text-align", "center"),
-                ("border", f"1px solid {PALETA_COLORES['borde']}"),
+                ("border", "1px solid #eee"),
                 ("color", PALETA_COLORES['texto_oscuro']),
-                ("background-color", "#FFFFFF"),
-                ("padding", "8px")
+                ("background-color", "#FFFFFF")
             ])
         ]
         return (
@@ -325,7 +322,7 @@ class GeneradorReporte:
         if self.total_opec == 0:
             return ""
         return (
-            f"<h4 style='margin-top:15px; margin-bottom:5px; color:{PALETA_COLORES['fondo_titulo']};'>"
+            "<h4 style='margin-top:15px; margin-bottom:5px; color:#004D40;'>"
             "Pasos Siguientes y Consideraciones Clave:</h4>"
             "<ul style='padding-left:20px;font-size:0.9em; line-height:1.6;'>"
             "<li><strong>Representatividad Jerárquica:</strong> Se debe procurar que la reserva de "
@@ -356,24 +353,19 @@ class GeneradorReporte:
         reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
 
         fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='white')
-        ax.set_facecolor('white')
-        
         bars1 = ax.barh(labels, general_data, color=PALETA_COLORES['ingreso_general'], label='General')
         bars2 = ax.barh(labels, reserva_data, left=general_data, color=PALETA_COLORES['ingreso_reserva'], label='Reserva PcD')
 
-        for bar_group, color_hex in [(bars1, PALETA_COLORES['ingreso_general']), (bars2, PALETA_COLORES['ingreso_reserva'])]:
+        for bar_group in (bars1, bars2):
             for bar in bar_group:
                 width = bar.get_width()
                 if width > 0:
-                    r, g, b = hex_to_rgb(color_hex)
-                    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-                    text_color = PALETA_COLORES['texto_oscuro'] if luminance > 0.5 else PALETA_COLORES['texto_claro']
                     ax.text(
                         bar.get_x() + width / 2,
                         bar.get_y() + bar.get_height() / 2,
                         f'{int(width)}',
                         ha='center', va='center',
-                        fontsize=12, weight='bold', color=text_color
+                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro']
                     )
 
         for spine in ax.spines.values():
@@ -409,32 +401,29 @@ class GeneradorReporte:
             data = b64encode(b.getvalue()).decode("utf-8")
             return (
                 f'<img src="data:image/png;base64,{data}" '
-                f'style="width:100%;max-width:700px;margin:auto;display:block;border-radius:8px;"/>'
+                f'style="width:100%;max-width:700px;margin:auto;display:block;"/>'
             )
 
         grafico_html = img(self.grafico_principal_buffer)
         return (
-            f"""<div style="font-family: 'Roboto', sans-serif; border:1px solid {PALETA_COLORES['borde']};"""
-            f"""border-radius:12px;padding:25px;background:#FFFFFF; box-shadow: 0 4px 12px rgba(0,0,0,0.05);"""
+            f"""<div style="font-family:sans-serif;border:1px solid #ddd;"""
+            f"""border-radius:8px;padding:20px;background:#f9f9f9;"""
             f"""color:{PALETA_COLORES['texto_oscuro']};">"""
             f"""<h1 style="color:{PALETA_COLORES['fondo_titulo']};"""
-            f"""border-bottom:3px solid {PALETA_COLORES['acento']};"""
-            f"""padding-bottom:10px; text-align:center;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
-            f"""<div style="margin-top:25px; padding:15px; border-radius:8px; background-color: {PALETA_COLORES['fondo_hover']};">
-                   <h2 style="color:{PALETA_COLORES['primario']}; margin-top:0;">Distribución Gráfica de Vacantes</h2>
-                   {grafico_html}
-               </div>"""
-            f"""<div style="margin-top:25px;">
-                   <h2 style="color:{PALETA_COLORES['primario']};">Resumen de Distribución</h2>
-                   {self.generar_tabla_html()}
-               </div>"""
-            f"""<div style="margin-top:25px; background:#FFFFFF; border-left:5px solid {PALETA_COLORES['acento']}; padding:1px 15px; border-radius:4px;">
-                   <h2 style="color:{PALETA_COLORES['primario']};">Notas y Advertencias Clave</h2>
-                   {self.generar_mensajes_html()}
-               </div>"""
-            f"""<div style="margin-top:25px; background:{PALETA_COLORES['fondo_hover']}; padding:15px; border-radius:8px;">
-                   {self._generar_conclusion_base()}
-               </div>"""
+            f"""border-bottom:2px solid {PALETA_COLORES['acento']};"""
+            f"""padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
+            f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
+            f"""Distribución Gráfica de Vacantes</h2><div style="background:#fff;"""
+            f"""padding:15px;border-radius:4px;">{grafico_html}</div>"""
+            f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
+            f"""Resumen de Distribución</h2>{self.generar_tabla_html()}"""
+            f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
+            f"""Notas y Advertencias Clave</h2><div style="background:#fff;"""
+            f"""border-left:5px solid {PALETA_COLORES['acento']};padding:1px 15px;"""
+            f"""border-radius:4px;">{self.generar_mensajes_html()}</div>"""
+            f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
+            f"""Conclusión y Pasos Siguientes</h2><div style="background:{PALETA_COLORES['fondo_hover']};"""
+            f"""padding:15px;border-radius:4px;">{self._generar_conclusion_base()}</div>"""
             f"""</div>"""
         )
 
@@ -514,61 +503,6 @@ def main():
         layout="wide"
     )
 
-    # --- INYECCIÓN DE CSS PARA MEJORAS ESTÉTICAS ---
-    st.markdown(f"""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-            
-            body, .stApp {{
-                font-family: 'Roboto', sans-serif;
-                background-color: {PALETA_COLORES['fondo_app']};
-                color: {PALETA_COLORES['texto_oscuro']};
-            }}
-            
-            .stButton > button {{
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-weight: bold;
-                border: 2px solid {PALETA_COLORES['primario']};
-                background-color: {PALETA_COLORES['primario']};
-                color: {PALETA_COLORES['texto_claro']};
-                transition: all 0.3s ease-in-out;
-            }}
-            .stButton > button:hover {{
-                background-color: {PALETA_COLORES['texto_claro']};
-                color: {PALETA_COLORES['primario']};
-                border-color: {PALETA_COLORES['primario']};
-            }}
-            
-            [data-testid="stContainer"], [data-testid="stVerticalBlock"] {{
-                background-color: #FFFFFF;
-                border: 1px solid {PALETA_COLORES['borde']};
-                border-radius: 10px;
-                padding: 25px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-            }}
-            
-            .stTextInput > div > div > input, .stNumberInput > div > div > input {{
-                background-color: {PALETA_COLORES['fondo_hover']};
-                border-radius: 5px;
-                color: {PALETA_COLORES['texto_oscuro']};
-            }}
-            
-            h1, h2, h3 {{ color: {PALETA_COLORES['fondo_titulo']}; }}
-            .stSubheader {{ color: {PALETA_COLORES['primario']}; }}
-            
-            /* Corrección de contraste para elementos específicos */
-            .stRadio > label, [data-testid="stInfo"] > div > div > div > div > p, .stMetricLabel, .stMetricValue, .stMetricDelta {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            ::placeholder {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-                opacity: 0.6;
-            }}
-        </style>
-    """, unsafe_allow_html=True)
-
-
     # --- ENCABEZADO ---
     col1, col2 = st.columns([1, 5])
     with col1:
@@ -583,7 +517,7 @@ def main():
     st.divider()
 
     # --- FORMULARIO DE ENTRADA ---
-    with st.container(border=True):
+    with st.container():
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
         nombre_entidad = col1.text_input(
