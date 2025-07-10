@@ -39,22 +39,22 @@ except ImportError:
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
-    # Paleta de visualización de datos (Gráficos)
-    'ingreso_general': '#A8DADC',  # Azul claro (Powder Blue)
-    'ingreso_reserva': '#457B9D',  # Azul acero (Steel Blue)
-    'ascenso_general': '#FCA311',  # Naranja/Amarillo vibrante
-    'ascenso_reserva': '#E63946',  # Rojo (Accent Red)
+    # Paleta de visualización de datos (Gráficos) - Optimizada para contraste en fondo blanco
+    'ingreso_general': '#5BC0DE',  # Azul Info (más visible)
+    'ingreso_reserva': '#0275D8',  # Azul Primario (fuerte y claro)
+    'ascenso_general': '#F0AD4E',  # Naranja Warning
+    'ascenso_reserva': '#D9534F',  # Rojo Danger
 
-    # Paleta de UI (Interfaz de Usuario)
-    'primario': '#457B9D',        # Azul acero (para títulos principales, botones)
-    'acento': '#E63946',          # Rojo (para alertas, botones de acción importantes)
-    'fondo_app': '#F1FAEE',        # Blanco verdoso muy claro (Honeydew)
+    # Paleta de UI (Interfaz de Usuario) - Profesional y de alto contraste
+    'primario': '#0275D8',        # Azul Primario (para títulos, botones)
+    'acento': '#F0AD4E',          # Naranja Warning (para divisores, alertas)
+    'fondo_app': '#F7F7F7',        # Gris muy claro y neutro
     'fondo_seccion': '#FFFFFF',   # Blanco puro (para tarjetas y contenedores)
-    'fondo_hover': '#E9F5F7',      # Tinte azul muy claro para efectos hover
-    'borde': '#D1D5DB',           # Gris claro estándar para bordes
-    'texto_oscuro': '#1F2937',    # Gris carbón oscuro (para texto principal)
-    'texto_claro': '#FFFFFF',     # Blanco puro (para texto sobre fondos oscuros)
-    'fondo_titulo': '#457B9D'     # Azul acero (para encabezados de tablas/secciones)
+    'fondo_hover': '#E9ECEF',      # Gris claro para efectos hover
+    'borde': '#CCCCCC',           # Gris estándar para bordes visibles
+    'texto_oscuro': '#292B2C',    # Casi negro, profesional (Jet)
+    'texto_claro': '#FFFFFF',     # Blanco puro
+    'fondo_titulo': '#292B2C'     # Fondo oscuro para encabezados de tabla
 }
 CREDITOS_SIMULADOR = (
     "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\n"
@@ -425,7 +425,7 @@ class GeneradorReporte:
             f"""<div style="font-family:sans-serif;border:1px solid {PALETA_COLORES['borde']};"""
             f"""border-radius:12px;padding:25px;background:{PALETA_COLORES['fondo_seccion']};box-shadow:0 4px 8px rgba(0,0,0,0.1);"""
             f"""color:{PALETA_COLORES['texto_oscuro']};">"""
-            f"""<h1 style="color:{PALETA_COLORES['fondo_titulo']};"""
+            f"""<h1 style="color:{PALETA_COLORES['primario']};"""
             f"""border-bottom:2px solid {PALETA_COLORES['acento']};"""
             f"""padding-bottom:10px;text-align:center;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
@@ -434,7 +434,7 @@ class GeneradorReporte:
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
             f"""Resumen de Distribución</h2><div style="overflow-x:auto;">{self.generar_tabla_html()}</div>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
-            f"""Notas y Advertencias Clave</h2><div style="background:{PALETA_COLORES['fondo_seccion']};"""
+            f"""Notas y Advertencias Clave</h2><div style="background:{PALETA_COLORES['fondo_hover']};"""
             f"""border-left:5px solid {PALETA_COLORES['acento']};padding:15px;"""
             f"""border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.05);">{self.generar_mensajes_html()}</div>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
