@@ -593,8 +593,9 @@ def main():
         )
 
         es_automatico = (distribucion_tipo == 'Automático (70/30)')
+        default_ascenso = round(total_vacantes * 0.3)
         if es_automatico:
-            vacantes_ascenso = round(total_vacantes * 0.3)
+            vacantes_ascenso = default_ascenso
             st.number_input(
                 "Vacantes para Ascenso",
                 value=vacantes_ascenso,
@@ -606,7 +607,7 @@ def main():
                 "Vacantes para Ascenso",
                 min_value=0,
                 max_value=total_vacantes,
-                value=30,
+                value=default_ascenso,
                 step=1,
                 help="Digite el número de vacantes para ascenso."
             )
