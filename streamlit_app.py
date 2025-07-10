@@ -97,13 +97,13 @@ class PDF_Reporte(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font('Helvetica', 'I', 8)
-        self.set_text_color(150, 150, 150)
+        self.set_text_color(128, 128, 128) # Gris oscuro para el pie de página del PDF
         self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', align='R')
-        self.set_y(-18)
+        self.set_y(-20)
         self.set_x(self.l_margin)
         self.set_font('Helvetica', 'I', 7)
         for line in CREDITOS_SIMULADOR.replace("©", "(c)").split('\n'):
-            self.cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+            self.multi_cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.set_text_color(0, 0, 0)
 
     def chapter_title(self, text: str):
@@ -162,7 +162,7 @@ class PDF_Reporte(FPDF):
 
         # Filas de datos
         self.set_font('Helvetica', '', 8)
-        self.set_text_color(0, 0, 0)
+        self.set_text_color(*hex_to_rgb(PALETA_COLORES['texto_oscuro']))
         for _, row in df.iterrows():
             is_total_row = 'TOTAL' in row['Modalidad']
             if is_total_row:
@@ -333,7 +333,7 @@ class GeneradorReporte:
         if self.total_opec == 0:
             return ""
         return (
-            "<h4 style='margin-top:15px; margin-bottom:5px; color:#004D40;'>"
+            f"<h4 style='margin-top:15px; margin-bottom:5px; color:{PALETA_COLORES['primario']};'>"
             "Pasos Siguientes y Consideraciones Clave:</h4>"
             "<ul style='padding-left:20px;font-size:0.9em; line-height:1.6;'>"
             "<li><strong>Representatividad Jerárquica:</strong> Se debe procurar que la reserva de "
@@ -527,6 +527,23 @@ def main():
                 background-color: {PALETA_COLORES['fondo_app']};
                 color: {PALETA_COLORES['texto_oscuro']};
             }}
+            /* Forzar color de texto en labels de radio buttons */
+            .stRadio > label {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
+            /* Forzar color de texto en el componente Metric */
+            [data-testid="stMetric"], [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
+            /* Estilo para placeholders */
+            ::placeholder {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+                opacity: 0.7;
+            }}
+            /* Estilo para el texto dentro de st.info */
+            [data-testid="stInfo"] {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
             .stButton > button {{
                 background-color: {PALETA_COLORES['primario']};
                 color: {PALETA_COLORES['texto_claro']};
@@ -545,6 +562,7 @@ def main():
                 border: 1px solid {PALETA_COLORES['borde']};
                 padding: 10px;
                 background-color: {PALETA_COLORES['fondo_seccion']};
+                color: {PALETA_COLORES['texto_oscuro']};
             }}
             .stRadio > div {{
                 flex-direction: row;
