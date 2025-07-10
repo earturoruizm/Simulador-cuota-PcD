@@ -1,8 +1,8 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v15.1 (VERSIÓN CON MEJORAS ESTÉTICAS)
+# CÓDIGO DEL SIMULADOR v15 (VERSIÓN FINAL, ESTABLE Y CON DISEÑO CORREGIDO)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
-# Adaptación y mejoras estéticas por: Asistente de IA de Google
+# Adaptación y corrección final por: Asistente de IA de Google
 # ==============================================================================
 
 import math
@@ -35,7 +35,7 @@ try:
 except ImportError:
     pass
 
-# --- CONSTANTES Y ESTILOS (PALETA VISUAL BASE) ---
+# --- CONSTANTES Y ESTILOS (PALETA VISUAL ESTABLE) ---
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
@@ -49,8 +49,8 @@ PALETA_COLORES = {
     'fondo_hover': '#E0F2F1', 
     'primario': '#00796B', 
     'acento': '#FFC107',
-    'fondo_app': '#F5F5F5', # Añadido para fondo general
-    'borde': '#E0E0E0'      # Añadido para bordes sutiles
+    'fondo_app': '#F5F5F5',
+    'borde': '#E0E0E0'
 }
 CREDITOS_SIMULADOR = (
     "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\n"
@@ -522,6 +522,7 @@ def main():
             body, .stApp {{
                 font-family: 'Roboto', sans-serif;
                 background-color: {PALETA_COLORES['fondo_app']};
+                color: {PALETA_COLORES['texto_oscuro']};
             }}
             
             .stButton > button {{
@@ -550,11 +551,20 @@ def main():
             .stTextInput > div > div > input, .stNumberInput > div > div > input {{
                 background-color: {PALETA_COLORES['fondo_hover']};
                 border-radius: 5px;
+                color: {PALETA_COLORES['texto_oscuro']};
             }}
             
             h1, h2, h3 {{ color: {PALETA_COLORES['fondo_titulo']}; }}
-            st.subheader {{ color: {PALETA_COLORES['primario']}; }}
+            .stSubheader {{ color: {PALETA_COLORES['primario']}; }}
             
+            /* Corrección de contraste para elementos específicos */
+            .stRadio > label, [data-testid="stInfo"] > div > div > div > div > p, .stMetricLabel, .stMetricValue, .stMetricDelta {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+            }}
+            ::placeholder {{
+                color: {PALETA_COLORES['texto_oscuro']} !important;
+                opacity: 0.6;
+            }}
         </style>
     """, unsafe_allow_html=True)
 
