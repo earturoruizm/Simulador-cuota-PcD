@@ -39,10 +39,22 @@ except ImportError:
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
-    'ingreso_general': '#81D4FA', 'ingreso_reserva': '#01579B', 'ascenso_general': '#FFE082',
-    'ascenso_reserva': '#EF6C00', 'texto_claro': '#FFFFFF', 'texto_oscuro': '#212121',
-    'fondo_titulo': '#0277BD', 'fondo_hover': '#E3F2FD', 'primario': '#0288D1', 'acento': '#FFA000',
-    'fondo_app': '#FAFAFA', 'borde': '#BDBDBD', 'fondo_seccion': '#F5F5F5'
+    # Paleta de visualización de datos (Gráficos)
+    'ingreso_general': '#A8DADC',  # Azul claro (Powder Blue)
+    'ingreso_reserva': '#457B9D',  # Azul acero (Steel Blue)
+    'ascenso_general': '#FCA311',  # Naranja/Amarillo vibrante
+    'ascenso_reserva': '#E63946',  # Rojo (Accent Red)
+
+    # Paleta de UI (Interfaz de Usuario)
+    'primario': '#457B9D',        # Azul acero (para títulos principales, botones)
+    'acento': '#E63946',          # Rojo (para alertas, botones de acción importantes)
+    'fondo_app': '#F1FAEE',        # Blanco verdoso muy claro (Honeydew)
+    'fondo_seccion': '#FFFFFF',   # Blanco puro (para tarjetas y contenedores)
+    'fondo_hover': '#E9F5F7',      # Tinte azul muy claro para efectos hover
+    'borde': '#D1D5DB',           # Gris claro estándar para bordes
+    'texto_oscuro': '#1F2937',    # Gris carbón oscuro (para texto principal)
+    'texto_claro': '#FFFFFF',     # Blanco puro (para texto sobre fondos oscuros)
+    'fondo_titulo': '#457B9D'     # Azul acero (para encabezados de tablas/secciones)
 }
 CREDITOS_SIMULADOR = (
     "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\n"
@@ -107,7 +119,7 @@ class PDF_Reporte(FPDF):
         self.set_font('Helvetica', '', 9)
         if BS4_AVAILABLE:
             text = BeautifulSoup(html_content.replace("</li>", "\n"), "html.parser") \
-                       .get_text(separator=" ")
+                    .get_text(separator=" ")
         else:
             import re
             text = re.sub(r'<br\s*/?>', '\n', html_content)
@@ -521,20 +533,18 @@ def main():
                 border-radius: 8px;
                 padding: 10px 20px;
                 font-weight: bold;
+                border: 1px solid {PALETA_COLORES['primario']};
             }}
             .stButton > button:hover {{
                 background-color: {PALETA_COLORES['acento']};
-                color: {PALETA_COLORES['texto_oscuro']};
+                color: {PALETA_COLORES['texto_claro']};
+                border: 1px solid {PALETA_COLORES['acento']};
             }}
-            .stTextInput > div > div > input {{
+            .stTextInput > div > div > input, .stNumberInput > div > div > input {{
                 border-radius: 8px;
                 border: 1px solid {PALETA_COLORES['borde']};
                 padding: 10px;
-            }}
-            .stNumberInput > div > div > input {{
-                border-radius: 8px;
-                border: 1px solid {PALETA_COLORES['borde']};
-                padding: 10px;
+                background-color: {PALETA_COLORES['fondo_seccion']};
             }}
             .stRadio > div {{
                 flex-direction: row;
@@ -556,6 +566,13 @@ def main():
                 background-color: {PALETA_COLORES['fondo_hover']};
                 border-radius: 8px;
                 padding: 10px;
+                border: 1px solid {PALETA_COLORES['borde']};
+            }}
+            [data-testid="stContainer"], [data-testid="stVerticalBlock"] {{
+                border-radius: 12px;
+                border: 1px solid {PALETA_COLORES['borde']};
+                padding: 20px;
+                background-color: {PALETA_COLORES['fondo_seccion']};
             }}
         </style>
         """,
@@ -576,7 +593,7 @@ def main():
     st.divider()
 
     # --- FORMULARIO DE ENTRADA ---
-    with st.container(border=True):
+    with st.container():
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
         nombre_entidad = col1.text_input(
