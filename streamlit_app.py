@@ -35,14 +35,20 @@ try:
 except ImportError:
     pass
 
-# --- CONSTANTES Y ESTILOS ---
+# --- CONSTANTES Y ESTILOS (NUEVA PALETA VISUAL) ---
 mpl.rcParams['figure.dpi'] = 150
 pd.set_option('display.float_format', lambda x: f'{x:.1f}')
 PALETA_COLORES = {
-    'ingreso_general': '#81D4FA', 'ingreso_reserva': '#01579B', 'ascenso_general': '#FFE082',
-    'ascenso_reserva': '#EF6C00', 'texto_claro': '#FFFFFF', 'texto_oscuro': '#000000',
-    'fondo_titulo': '#0277BD', 'fondo_hover': '#E3F2FD', 'primario': '#0288D1', 'acento': '#FFA000',
-    'fondo_app': '#F0F0F0', 'borde': '#BDBDBD', 'fondo_seccion': '#E0E0E0'
+    'ingreso_general': '#B2EBF2', 
+    'ingreso_reserva': '#00838F', 
+    'ascenso_general': '#FFECB3',
+    'ascenso_reserva': '#FF8F00', 
+    'texto_claro': '#FFFFFF', 
+    'texto_oscuro': '#333333',
+    'fondo_titulo': '#004D40', 
+    'fondo_hover': '#E0F2F1', 
+    'primario': '#00796B', 
+    'acento': '#FFC107'
 }
 CREDITOS_SIMULADOR = (
     "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\n"
@@ -91,7 +97,7 @@ class PDF_Reporte(FPDF):
         self.set_x(self.l_margin)
         self.set_font('Helvetica', 'I', 7)
         for line in CREDITOS_SIMULADOR.replace("©", "(c)").split('\n'):
-            self.cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+            self.multi_cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.set_text_color(0, 0, 0)
 
     def chapter_title(self, text: str):
@@ -107,7 +113,7 @@ class PDF_Reporte(FPDF):
         self.set_font('Helvetica', '', 9)
         if BS4_AVAILABLE:
             text = BeautifulSoup(html_content.replace("</li>", "\n"), "html.parser") \
-                       .get_text(separator=" ")
+                    .get_text(separator=" ")
         else:
             import re
             text = re.sub(r'<br\s*/?>', '\n', html_content)
@@ -150,14 +156,14 @@ class PDF_Reporte(FPDF):
 
         # Filas de datos
         self.set_font('Helvetica', '', 8)
-        self.set_text_color(0, 0, 0)
+        self.set_text_color(*hex_to_rgb(PALETA_COLORES['texto_oscuro']))
         for _, row in df.iterrows():
             is_total_row = 'TOTAL' in row['Modalidad']
             if is_total_row:
                 self.set_font('Helvetica', 'B', 8.5)
                 self.set_fill_color(*hex_to_rgb(PALETA_COLORES['fondo_hover']))
             else:
-                self.set_fill_color(*hex_to_rgb(PALETA_COLORES['fondo_seccion']))
+                self.set_fill_color(255, 255, 255)
 
             for i, datum in enumerate(row):
                 align = 'L' if i == 0 else 'C'
@@ -255,20 +261,14 @@ class GeneradorReporte:
                 ("font-size", "11pt"),
                 ("text-align", "center"),
                 ("background-color", PALETA_COLORES['fondo_titulo']),
-                ("color", PALETA_COLORES['texto_claro']),
-                ("padding", "8px"),
-                ("border-radius", "4px 4px 0 0")
+                ("color", PALETA_COLORES['texto_claro'])
             ]),
             dict(selector="td", props=[
                 ("font-size", "10.5pt"),
                 ("text-align", "center"),
-                ("border", f"1px solid {PALETA_COLORES['borde']}"),
+                ("border", "1px solid #eee"),
                 ("color", PALETA_COLORES['texto_oscuro']),
-                ("background-color", PALETA_COLORES['fondo_seccion']),
-                ("padding", "8px")
-            ]),
-            dict(selector="tr:nth-child(even) td", props=[
-                ("background-color", PALETA_COLORES['fondo_hover'])
+                ("background-color", "#FFFFFF")
             ])
         ]
         return (
@@ -313,7 +313,7 @@ class GeneradorReporte:
     def generar_mensajes_html(self) -> str:
         contenido = "".join(self._generar_mensajes_base())
         return (
-            f"<ul style='padding-left:20px;font-size:0.95em;line-height:1.5;"
+            f"<ul style='padding-left:20px;font-size:0.95em;"
             f"color:{PALETA_COLORES['texto_oscuro']};'>{contenido}</ul>"
         )
 
@@ -351,34 +351,29 @@ class GeneradorReporte:
         general_data = [res.ascenso.general, res.ingreso.general]
         reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
 
-        fig, ax = plt.subplots(figsize=(10, 3.5), facecolor=PALETA_COLORES['fondo_seccion'])
-        bars1 = ax.barh(labels, general_data, color=PALETA_COLORES['ingreso_general'], label='General', height=0.7)
-        bars2 = ax.barh(labels, reserva_data, left=general_data, color=PALETA_COLORES['ingreso_reserva'], label='Reserva PcD', height=0.7)
+        fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='white')
+        bars1 = ax.barh(labels, general_data, color=PALETA_COLORES['ingreso_general'], label='General')
+        bars2 = ax.barh(labels, reserva_data, left=general_data, color=PALETA_COLORES['ingreso_reserva'], label='Reserva PcD')
 
-        for bar_group, colors in zip((bars1, bars2), (PALETA_COLORES['ingreso_general'], PALETA_COLORES['ingreso_reserva'])):
+        for bar_group in (bars1, bars2):
             for bar in bar_group:
                 width = bar.get_width()
                 if width > 0:
-                    # Calculate luminance for contrast
-                    r, g, b = hex_to_rgb(colors)
-                    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-                    text_color = PALETA_COLORES['texto_oscuro'] if luminance > 0.5 else PALETA_COLORES['texto_claro']
                     ax.text(
                         bar.get_x() + width / 2,
                         bar.get_y() + bar.get_height() / 2,
-                        f'{width}',
+                        f'{int(width)}',
                         ha='center', va='center',
-                        fontsize=12, weight='bold', color=text_color
+                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro']
                     )
 
-        # Eliminamos los spines correctamente
         for spine in ax.spines.values():
             spine.set_visible(False)
 
         ax.tick_params(bottom=False, left=False)
         ax.set_xticks([])
-        ax.set_yticklabels(labels, fontsize=12, weight='bold', color=PALETA_COLORES['primario'])
-        ax.set_xlabel(f'Total de Vacantes: {self.total_opec}', fontsize=12, labelpad=10, color=PALETA_COLORES['texto_oscuro'])
+        ax.set_yticklabels(labels, fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro'])
+        ax.set_xlabel(f"Total de Vacantes: {self.total_opec}", fontsize=12, labelpad=10, color=PALETA_COLORES['texto_oscuro'])
 
         legend_patches = [
             mpatches.Patch(color=PALETA_COLORES['ingreso_general'], label='Vacantes Generales'),
@@ -405,29 +400,29 @@ class GeneradorReporte:
             data = b64encode(b.getvalue()).decode("utf-8")
             return (
                 f'<img src="data:image/png;base64,{data}" '
-                f'style="width:100%;max-width:700px;margin:auto;display:block;border-radius:8px;"/>'
+                f'style="width:100%;max-width:700px;margin:auto;display:block;"/>'
             )
 
         grafico_html = img(self.grafico_principal_buffer)
         return (
-            f"""<div style="font-family:sans-serif;border:1px solid {PALETA_COLORES['borde']};"""
-            f"""border-radius:12px;padding:25px;background:{PALETA_COLORES['fondo_seccion']};box-shadow:0 4px 8px rgba(0,0,0,0.1);"""
+            f"""<div style="font-family:sans-serif;border:1px solid #ddd;"""
+            f"""border-radius:8px;padding:20px;background:#f9f9f9;"""
             f"""color:{PALETA_COLORES['texto_oscuro']};">"""
             f"""<h1 style="color:{PALETA_COLORES['fondo_titulo']};"""
             f"""border-bottom:2px solid {PALETA_COLORES['acento']};"""
-            f"""padding-bottom:10px;text-align:center;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
+            f"""padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
-            f"""Distribución Gráfica de Vacantes</h2><div style="background:{PALETA_COLORES['fondo_seccion']};"""
-            f"""padding:15px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.05);"> {grafico_html}</div>"""
+            f"""Distribución Gráfica de Vacantes</h2><div style="background:#fff;"""
+            f"""padding:15px;border-radius:4px;">{grafico_html}</div>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
-            f"""Resumen de Distribución</h2><div style="overflow-x:auto;">{self.generar_tabla_html()}</div>"""
+            f"""Resumen de Distribución</h2>{self.generar_tabla_html()}"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
-            f"""Notas y Advertencias Clave</h2><div style="background:{PALETA_COLORES['fondo_seccion']};"""
-            f"""border-left:5px solid {PALETA_COLORES['acento']};padding:15px;"""
-            f"""border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.05);">{self.generar_mensajes_html()}</div>"""
+            f"""Notas y Advertencias Clave</h2><div style="background:#fff;"""
+            f"""border-left:5px solid {PALETA_COLORES['acento']};padding:1px 15px;"""
+            f"""border-radius:4px;">{self.generar_mensajes_html()}</div>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
             f"""Conclusión y Pasos Siguientes</h2><div style="background:{PALETA_COLORES['fondo_hover']};"""
-            f"""padding:15px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.05);">{self._generar_conclusion_base()}</div>"""
+            f"""padding:15px;border-radius:4px;">{self._generar_conclusion_base()}</div>"""
             f"""</div>"""
         )
 
@@ -507,84 +502,6 @@ def main():
         layout="wide"
     )
 
-    # --- ESTILOS PERSONALIZADOS ---
-    st.markdown(
-        f"""
-        <style>
-            .stApp {{
-                background-color: {PALETA_COLORES['fondo_app']};
-                color: {PALETA_COLORES['texto_oscuro']};
-            }}
-            .stButton > button {{
-                background-color: {PALETA_COLORES['primario']};
-                color: {PALETA_COLORES['texto_claro']};
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }}
-            .stButton > button:hover {{
-                background-color: {PALETA_COLORES['acento']};
-                color: {PALETA_COLORES['texto_oscuro']};
-            }}
-            .stTextInput > div > div > input {{
-                border-radius: 8px;
-                border: 1px solid {PALETA_COLORES['borde']};
-                padding: 10px;
-                color: {PALETA_COLORES['texto_oscuro']};
-            }}
-            .stTextInput > div > div > input::placeholder {{
-                color: {PALETA_COLORES['texto_oscuro']};
-            }}
-            .stNumberInput > div > div > input {{
-                border-radius: 8px;
-                border: 1px solid {PALETA_COLORES['borde']};
-                padding: 10px;
-                color: {PALETA_COLORES['texto_oscuro']};
-            }}
-            .stRadio > div {{
-                flex-direction: row;
-                gap: 20px;
-            }}
-            .stRadio > label {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            .stRadio > label > div > p {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            .stExpander {{
-                border-radius: 8px;
-                border: 1px solid {PALETA_COLORES['borde']};
-                background-color: {PALETA_COLORES['fondo_seccion']};
-            }}
-            h1, h2, h3 {{
-                color: {PALETA_COLORES['primario']};
-            }}
-            .stDivider {{
-                background-color: {PALETA_COLORES['acento']};
-                height: 2px;
-            }}
-            .stMetric {{
-                background-color: {PALETA_COLORES['fondo_hover']};
-                border-radius: 8px;
-                padding: 10px;
-            }}
-            .stMetric label {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            .stMetric .stMetricValue {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            .stAlert {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-            .stAlert > div {{
-                color: {PALETA_COLORES['texto_oscuro']} !important;
-            }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
     # --- ENCABEZADO ---
     col1, col2 = st.columns([1, 5])
     with col1:
@@ -599,18 +516,16 @@ def main():
     st.divider()
 
     # --- FORMULARIO DE ENTRADA ---
-    with st.container(border=True):
+    with st.container():
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
         nombre_entidad = col1.text_input(
             "Nombre de la Entidad",
-            placeholder="Ej: Alcaldía Mayor de Bogotá D.C.",
-            help="Ingrese el nombre completo de la entidad para el reporte."
+            placeholder="Ej: Alcaldía Mayor de Bogotá D.C."
         )
         total_vacantes = col2.number_input(
             "Total de Vacantes en la OPEC",
-            min_value=0, value=100, step=1,
-            help="Número total de vacantes disponibles en la OPEC."
+            min_value=0, value=100, step=1
         )
 
         st.subheader("🔀 2. Distribución de Vacantes")
@@ -708,8 +623,13 @@ def main():
     # --- PIE DE PÁGINA ---
     st.divider()
     with st.expander("Marco Normativo"):
-        st.markdown("""- **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)
-- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)""")
+        st.markdown(
+            "- **Ley 2418 de 2024:** [Consulte la norma en Función Pública]"
+            "(https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)\n"
+            "- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes]"
+            "(https://www.cnsc.gov.co/sites/default/files/2025-02/"
+            "circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)"
+        )
     with st.expander("Acerca de este Simulador"):
         st.info(CREDITOS_SIMULADOR.replace("\n", "\n\n"))
 
