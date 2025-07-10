@@ -1,5 +1,5 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v11 (VERSIÓN FINAL Y ESTABLE)
+# CÓDIGO DEL SIMULADOR v12 (VERSIÓN CON CORRECCIÓN DE NAMEERROR)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
 # Reingeniería y corrección final por: Asistente de IA de Google
@@ -52,6 +52,11 @@ class ModalidadResultados: total: int; reserva: int; general: int; estado: Estad
 class ResultadosSimulacion: ingreso: ModalidadResultados; ascenso: ModalidadResultados
 @dataclass
 class DatosEntrada: total_opec: int; opcion_calculo_str: str; hay_pcd_para_ascenso: bool; v_ingreso: int; v_ascenso: int
+
+# CORRECCIÓN: Se restaura la función 'hex_to_rgb' que había sido eliminada por error.
+def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 class PDF_Reporte(FPDF):
     def footer(self):
@@ -255,29 +260,36 @@ def main():
         if vacantes_ascenso > 0:
              respuesta_elegibilidad = st.radio("¿Existen servidores con derechos de carrera y discapacidad que cumplen los requisitos para los cargos de ascenso?",
                 options=['Sí, existen servidores que cumplen los requisitos', 'No, no existen servidores que cumplen los requisitos'], key='respuesta_elegibilidad')
-             pcd_para_ascenso = (respuesta_elegibilidad == 'Sí, existen servidores que cumplen losquisitos')
+             pcd_para_ascenso = (respuesta_elegibilidad == 'Sí, existen servidores que cumplen los requisitos')
         else:
             st.info("No hay vacantes de ascenso, por lo tanto no aplica esta condición."); pcd_para_ascenso = False
 
         st.divider()
         col_btn1, col_btn2 = st.columns(2)
-        # El botón de submit ya no está dentro de un form, su click se maneja con el estado de sesión
         if col_btn1.button(label="🚀 Generar Simulación", use_container_width=True, type="primary"):
             if not nombre_entidad.strip(): st.error("⚠️ **Error:** El nombre de la entidad es obligatorio.")
             elif vacantes_ingreso < 0: st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo.")
             else: st.session_state.form_submitted = True; st.rerun()
         col_btn2.button(label="✨ Nueva Simulación (Limpiar)", on_click=reset_simulation, use_container_width=True)
     
-    # --- LÓGICA DE PROCESAMIENTO Y VISUALIZACIÓN DE RESULTADOS ---
     if st.session_state.form_submitted:
+        # Recopila los datos del estado de sesión para el cálculo
+        datos_calculo_ascenso = st.session_state.ascenso_manual if st.session_state.distribucion_tipo == 'Manual' else round(st.session_state.total_vacantes * 0.3)
+        datos_calculo_ingreso = st.session_state.total_vacantes - datos_calculo_ascenso
+
         with st.spinner("⚙️ Procesando, por favor espere..."):
-            datos_entrada = DatosEntrada(total_opec=st.session_state.total_vacantes, v_ingreso=(st.session_state.total_vacantes - vacantes_ascenso), v_ascenso=vacantes_ascenso, opcion_calculo_str=st.session_state.distribucion_tipo, hay_pcd_para_ascenso=pcd_para_ascenso)
+            datos_entrada = DatosEntrada(
+                total_opec=st.session_state.total_vacantes, 
+                v_ingreso=datos_calculo_ingreso, 
+                v_ascenso=datos_calculo_ascenso, 
+                opcion_calculo_str=st.session_state.distribucion_tipo, 
+                hay_pcd_para_ascenso=pcd_para_ascenso
+            )
             resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
             reporte = GeneradorReporte(st.session_state.nombre_entidad.strip(), datos_entrada, resultados_sim)
         
         st.success("¡Simulación completada!")
         
-        # CORRECCIÓN FINAL: La llamada a la función que devuelve el HTML se pasa a st.markdown
         html_para_mostrar = reporte.get_reporte_html()
         st.markdown(html_para_mostrar, unsafe_allow_html=True)
         
@@ -285,7 +297,6 @@ def main():
         if pdf_bytes:
             st.download_button(label="📄 Descargar Reporte Completo en PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf", use_container_width=True)
 
-    # --- PIE DE PÁGINA ---
     st.divider()
     with st.expander("Marco Normativo"):
         st.markdown("- **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)\n- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)")
