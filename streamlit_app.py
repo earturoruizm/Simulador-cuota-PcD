@@ -1,5 +1,5 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v12 (VERSIÓN CON CORRECCIÓN DE NAMEERROR)
+# CÓDIGO DEL SIMULADOR v13 (VERSIÓN CON CORRECCIÓN DEFINITIVA DE RENDERIZADO)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
 # Reingeniería y corrección final por: Asistente de IA de Google
@@ -53,10 +53,8 @@ class ResultadosSimulacion: ingreso: ModalidadResultados; ascenso: ModalidadResu
 @dataclass
 class DatosEntrada: total_opec: int; opcion_calculo_str: str; hay_pcd_para_ascenso: bool; v_ingreso: int; v_ascenso: int
 
-# CORRECCIÓN: Se restaura la función 'hex_to_rgb' que había sido eliminada por error.
 def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
-    hex_color = hex_color.lstrip('#')
-    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    hex_color = hex_color.lstrip('#'); return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 class PDF_Reporte(FPDF):
     def footer(self):
@@ -129,7 +127,7 @@ class GeneradorReporte:
     def __init__(self, nombre_entidad: str, datos_entrada: DatosEntrada, resultados: ResultadosSimulacion):
         self.nombre_entidad = nombre_entidad; self.datos_entrada = datos_entrada; self.resultados = resultados
         self.total_opec = datos_entrada.total_opec
-        self.graficos_img_buffer = self._generar_todos_los_graficos()
+        self.grafico_principal_buffer = self.crear_grafico_barras_apiladas()
     def _calcular_porcentaje_str(self, valor: float, total: float) -> str: return "0.0%" if total <= 0 else f"{(valor / total) * 100:.1f}%"
     def _preparar_datos_tabla(self) -> pd.DataFrame:
         i, a = self.resultados.ingreso, self.resultados.ascenso; tr, tg = i.reserva + a.reserva, i.general + a.general
@@ -157,9 +155,7 @@ class GeneradorReporte:
     def crear_grafico_barras_apiladas(self) -> Optional[io.BytesIO]:
         if self.total_opec == 0: return None
         res = self.resultados
-        labels = ['Ascenso', 'Ingreso']
-        general_data = [res.ascenso.general, res.ingreso.general]
-        reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
+        labels = ['Ascenso', 'Ingreso']; general_data = [res.ascenso.general, res.ingreso.general]; reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
         fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='white')
         bars1 = ax.barh(labels, general_data, color=PALETA_COLORES['ingreso_general'], label='General')
         bars2 = ax.barh(labels, reserva_data, left=general_data, color=PALETA_COLORES['ingreso_reserva'], label='Reserva PcD')
@@ -172,12 +168,10 @@ class GeneradorReporte:
         legend_patches = [mpatches.Patch(color=PALETA_COLORES['ingreso_general'], label='Vacantes Generales'), mpatches.Patch(color=PALETA_COLORES['ingreso_reserva'], label='Vacantes Reserva PcD')]
         ax.legend(handles=legend_patches, loc='lower center', ncol=2, bbox_to_anchor=(0.5, -0.3), frameon=False, fontsize=11)
         plt.tight_layout(pad=1); return self._render_fig_to_buffer(fig)
-    def _generar_todos_los_graficos(self) -> Dict[str, Optional[io.BytesIO]]:
-        return {"grafico_principal": self.crear_grafico_barras_apiladas()}
     def get_reporte_html(self) -> str:
         from base64 import b64encode
         def img(b: Optional[io.BytesIO]) -> str: return f'<img src="data:image/png;base64,{b64encode(b.getvalue()).decode("utf-8")}" style="width:100%;max-width:700px;margin:auto;display:block;"/>' if b else ""
-        grafico_html = img(self.graficos_img_buffer.get('grafico_principal'))
+        grafico_html = img(self.grafico_principal_buffer)
         return f"""<div style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:20px;background:#f9f9f9;color:{PALETA_COLORES['texto_oscuro']};">
             <h1 style="color:{PALETA_COLORES['fondo_titulo']};border-bottom:2px solid {PALETA_COLORES['acento']};padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>
             <h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">Distribución Gráfica de Vacantes</h2><div style="background:#fff;padding:15px;border-radius:4px;">{grafico_html}</div>
@@ -198,7 +192,7 @@ class GeneradorReporte:
         pdf.chapter_title('Resultados Numéricos'); pdf.add_pandas_table(self._preparar_datos_tabla())
         if self.total_opec > 0:
             pdf.chapter_title("Distribución Gráfica de Vacantes")
-            if buffer := self.graficos_img_buffer.get("grafico_principal"): pdf.add_image_from_buffer(buffer, "")
+            if buffer := self.grafico_principal_buffer: pdf.add_image_from_buffer(buffer, "")
         if pdf.get_y() > 200: pdf.add_page()
         pdf.chapter_title('Notas y Advertencias del Cálculo'); pdf.chapter_body_html(self.generar_mensajes_html())
         pdf.chapter_title('Conclusión y Pasos Siguientes'); pdf.chapter_body_html(self._generar_conclusion_base())
@@ -210,23 +204,28 @@ class GeneradorReporte:
 # INTERFAZ DE USUARIO Y LÓGICA PRINCIPAL
 # ==============================================================================
 def init_session_state():
+    """Inicializa el estado de sesión para el formulario."""
     if 'form_submitted' not in st.session_state:
         st.session_state.form_submitted = False
         reset_simulation(first_run=True)
 
 def reset_simulation(first_run=False):
-    st.session_state.nombre_entidad = ""
-    st.session_state.total_vacantes = 100
-    st.session_state.distribucion_tipo = 'Automático (70/30)'
-    st.session_state.ascenso_manual = 30
-    st.session_state.respuesta_elegibilidad = 'Sí, existen servidores que cumplen los requisitos'
+    """Resetea el formulario a sus valores iniciales y limpia el reporte."""
+    keys_to_reset = ['nombre_entidad', 'total_vacantes', 'distribucion_tipo', 'ascenso_manual', 'respuesta_elegibilidad']
+    default_values = {"nombre_entidad": "", "total_vacantes": 100, "distribucion_tipo": 'Automático (70/30)', "ascenso_manual": 30, "respuesta_elegibilidad": 'Sí, existen servidores que cumplen los requisitos'}
+    for key in keys_to_reset:
+        st.session_state[key] = default_values[key]
     st.session_state.form_submitted = False
-    if not first_run: st.success("Formulario limpiado. Puede iniciar una nueva simulación.")
-        
+    if 'reporte' in st.session_state:
+        del st.session_state.reporte
+    if not first_run:
+        st.success("Formulario limpiado. Puede iniciar una nueva simulación.")
+
 def main():
     st.set_page_config(page_title="Simulador Reserva de Plazas PcD", page_icon="♿", layout="wide")
     init_session_state()
 
+    # --- ENCABEZADO ---
     col1, col2 = st.columns([1, 5])
     with col1:
         try: st.image("logo.jpg", width=120)
@@ -237,7 +236,7 @@ def main():
     
     st.divider()
 
-    # --- RENDERIZADO DEL FORMULARIO ---
+    # --- FORMULARIO DE ENTRADA ---
     with st.container(border=True):
         st.subheader("📝 1. Datos Generales")
         col1, col2 = st.columns(2)
@@ -269,27 +268,23 @@ def main():
         if col_btn1.button(label="🚀 Generar Simulación", use_container_width=True, type="primary"):
             if not nombre_entidad.strip(): st.error("⚠️ **Error:** El nombre de la entidad es obligatorio.")
             elif vacantes_ingreso < 0: st.error("⚠️ **Error:** El número de vacantes de ingreso no puede ser negativo.")
-            else: st.session_state.form_submitted = True; st.rerun()
+            else:
+                with st.spinner("⚙️ Procesando, por favor espere..."):
+                    datos_entrada = DatosEntrada(total_opec=total_vacantes, v_ingreso=vacantes_ingreso, v_ascenso=vacantes_ascenso, opcion_calculo_str=distribucion_tipo, hay_pcd_para_ascenso=pcd_para_ascenso)
+                    resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
+                    # Guardamos el objeto reporte en el estado de la sesión
+                    st.session_state.reporte = GeneradorReporte(nombre_entidad.strip(), datos_entrada, resultados_sim)
+                st.session_state.form_submitted = True
+        
         col_btn2.button(label="✨ Nueva Simulación (Limpiar)", on_click=reset_simulation, use_container_width=True)
     
-    if st.session_state.form_submitted:
-        # Recopila los datos del estado de sesión para el cálculo
-        datos_calculo_ascenso = st.session_state.ascenso_manual if st.session_state.distribucion_tipo == 'Manual' else round(st.session_state.total_vacantes * 0.3)
-        datos_calculo_ingreso = st.session_state.total_vacantes - datos_calculo_ascenso
-
-        with st.spinner("⚙️ Procesando, por favor espere..."):
-            datos_entrada = DatosEntrada(
-                total_opec=st.session_state.total_vacantes, 
-                v_ingreso=datos_calculo_ingreso, 
-                v_ascenso=datos_calculo_ascenso, 
-                opcion_calculo_str=st.session_state.distribucion_tipo, 
-                hay_pcd_para_ascenso=pcd_para_ascenso
-            )
-            resultados_sim = LogicaCalculo.determinar_resultados_finales(datos_entrada)
-            reporte = GeneradorReporte(st.session_state.nombre_entidad.strip(), datos_entrada, resultados_sim)
-        
+    # --- VISUALIZACIÓN DE RESULTADOS ---
+    # Esta sección ahora está fuera del 'with st.container()' para asegurar que siempre se evalúe
+    if st.session_state.form_submitted and 'reporte' in st.session_state:
         st.success("¡Simulación completada!")
+        reporte = st.session_state.reporte
         
+        # CORRECCIÓN FINAL: La llamada a st.markdown se hace aquí, en el flujo principal.
         html_para_mostrar = reporte.get_reporte_html()
         st.markdown(html_para_mostrar, unsafe_allow_html=True)
         
@@ -297,6 +292,7 @@ def main():
         if pdf_bytes:
             st.download_button(label="📄 Descargar Reporte Completo en PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf", use_container_width=True)
 
+    # --- PIE DE PÁGINA ---
     st.divider()
     with st.expander("Marco Normativo"):
         st.markdown("- **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)\n- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)")
