@@ -1,17 +1,15 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v3 (CON CORRECCIÓN DE PDF Y REDISEÑO DE UI)
+# CÓDIGO DEL SIMULADOR v4 (VERSIÓN FINAL SIMPLIFICADA)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
-# Adaptación y rediseño por: Asistente de IA de Google
+# Adaptación y simplificación por: Asistente de IA de Google
 # ==============================================================================
 import math
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import time
 import io
 from datetime import datetime
-from pathlib import Path
 from enum import Enum
 from typing import Tuple, Optional, Any, Dict, List
 from dataclasses import dataclass
@@ -46,7 +44,7 @@ PALETA_COLORES = {
 CREDITOS_SIMULADOR = "Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil\nDerechos Reservados CNSC © 2025"
 
 # ==============================================================================
-# 2. LÓGICA DE NEGOCIO Y CLASES (NÚCLEO INTOCADO)
+# 2. LÓGICA DE NEGOCIO Y CLASES
 # ==============================================================================
 class EstadoCalculo(Enum): NORMAL, CERO_VACANTES, AJUSTE_V1, AJUSTE_SIN_PCD = range(4)
 @dataclass
@@ -60,52 +58,23 @@ def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
     hex_color = hex_color.lstrip('#'); return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 class PDF_Reporte(FPDF):
-    def __init__(self, orientation: str = 'P', unit: str = 'mm', format: str = 'A4'):
-        super().__init__(orientation, unit, format)
-        self.set_margins(20, 20, 20)
-        self.active_font_family = 'Helvetica'
-        self._configurar_fuentes()
-
-    def _configurar_fuentes(self):
-        font_dir = Path("fonts")
-        dejavu_regular = font_dir / "DejaVuSans.ttf"
-        dejavu_bold = font_dir / "DejaVuSans-Bold.ttf"
-        dejavu_italic = font_dir / "DejaVuSans-Oblique.ttf"
-        dejavu_bold_italic = font_dir / "DejaVuSans-BoldOblique.ttf"
-
-        if dejavu_regular.exists():
-            try:
-                self.add_font('DejaVu', '', str(dejavu_regular))
-                if dejavu_bold.exists(): self.add_font('DejaVu', 'B', str(dejavu_bold))
-                if dejavu_italic.exists(): self.add_font('DejaVu', 'I', str(dejavu_italic))
-                if dejavu_bold_italic.exists(): self.add_font('DejaVu', 'BI', str(dejavu_bold_italic))
-                self.active_font_family = 'DejaVu'
-            except (RuntimeError, FPDFException) as e:
-                self.active_font_family = 'Helvetica'
-                st.sidebar.warning(f"⚠️ Error al cargar la fuente DejaVu: {e}. Se usará Helvetica.")
-        else:
-            self.active_font_family = 'Helvetica'
-            st.sidebar.info("ℹ️ Nota: Fuente DejaVu no encontrada en 'fonts/'. El PDF usará Helvetica. '★' podría no mostrarse.")
-
-    def set_active_font(self, style: str = '', size: Optional[float] = None):
-        self.set_font(self.active_font_family, style, size if size else self.font_size_pt)
-
+    # Ya no necesitamos configurar fuentes externas, usamos las que vienen por defecto.
     def footer(self):
-        self.set_y(-15); self.set_active_font('I', 8); self.set_text_color(150, 150, 150)
+        self.set_y(-15); self.set_font('Helvetica', 'I', 8); self.set_text_color(150, 150, 150)
         self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', align='R')
-        self.set_y(-18); self.set_x(self.l_margin); self.set_active_font('I', 7)
+        self.set_y(-18); self.set_x(self.l_margin); self.set_font('Helvetica', 'I', 7)
         for line in CREDITOS_SIMULADOR.replace("©", "(c)").split('\n'):
             self.cell(0, 4, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.set_text_color(0,0,0)
 
     def chapter_title(self, text: str):
-        self.set_active_font('B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
+        self.set_font('Helvetica', 'B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
         self.cell(0, 8, text, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.set_draw_color(*hex_to_rgb(PALETA_COLORES['acento'])); self.line(self.get_x(), self.get_y(), self.get_x()+40, self.get_y())
         self.ln(3); self.set_text_color(0,0,0)
 
     def chapter_body_html(self, html_content: str):
-        self.set_active_font('', 9)
+        self.set_font('Helvetica', '', 9)
         if BS4_AVAILABLE:
             processed_html = html_content.replace("</li>","\n").replace("</p>","\n").replace("<br>","\n").replace("</h4>","\n\n")
             text = BeautifulSoup(processed_html, "html.parser").get_text(separator=" ")
@@ -117,31 +86,31 @@ class PDF_Reporte(FPDF):
             style = 'B' if "Pasos Siguientes y Consideraciones Clave:" in cleaned_paragraph else ''
             prefix = "• " if cleaned_paragraph.startswith("•") else ""
             if prefix: cleaned_paragraph = cleaned_paragraph.replace("•","").strip()
-            self.set_active_font(style, 9)
+            self.set_font('Helvetica', style, 9)
             if prefix: self.cell(4, 5, prefix); self.multi_cell(0, 5, cleaned_paragraph, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
             else: self.multi_cell(0, 5, cleaned_paragraph, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
             self.ln(2)
 
     def add_pandas_table(self, df: pd.DataFrame):
-        self.set_active_font('B', 8); available_width = self.w - self.l_margin - self.r_margin
+        self.set_font('Helvetica', 'B', 8); available_width = self.w - self.l_margin - self.r_margin
         col_widths = [available_width * w for w in [0.25, 0.22, 0.28, 0.25]]; line_height = 7
         self.set_fill_color(*hex_to_rgb(PALETA_COLORES['fondo_titulo'])); self.set_text_color(*hex_to_rgb(PALETA_COLORES['texto_claro']))
         for i, header in enumerate(df.columns): self.cell(col_widths[i], line_height, header, border=0, new_x=XPos.RIGHT, new_y=YPos.TOP, align='C', fill=True)
-        self.ln(line_height); self.set_active_font('', 8); self.set_text_color(0,0,0)
+        self.ln(line_height); self.set_font('Helvetica', '', 8); self.set_text_color(0,0,0)
         for index, row in df.iterrows():
             is_total_row = 'TOTAL' in row['Modalidad']
-            if is_total_row: self.set_active_font('B', 8.5)
+            if is_total_row: self.set_font('Helvetica', 'B', 8.5)
             fill_color = hex_to_rgb(PALETA_COLORES['fondo_hover']) if is_total_row else (255,255,255)
             self.set_fill_color(*fill_color)
             for i, datum in enumerate(row):
                 align = 'L' if i == 0 else 'C'
                 self.cell(col_widths[i], line_height, str(datum), border='T', new_x=XPos.RIGHT, new_y=YPos.TOP, align=align, fill=True)
             self.ln(line_height)
-            if is_total_row: self.set_active_font('', 8)
+            if is_total_row: self.set_font('Helvetica', '', 8)
         self.ln(4)
 
     def add_image_from_buffer(self, img_buffer: io.BytesIO, title: str):
-        self.set_active_font('B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
+        self.set_font('Helvetica', 'B', 11); self.set_text_color(*hex_to_rgb(PALETA_COLORES['primario']))
         self.cell(0, 8, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L'); self.ln(2)
         self.set_text_color(0,0,0)
         img_buffer.seek(0); self.image(img_buffer, w=self.w - self.l_margin - self.r_margin)
@@ -164,8 +133,7 @@ class GeneradorReporte:
     def __init__(self, nombre_entidad: str, datos_entrada: DatosEntrada, resultados: ResultadosSimulacion):
         self.nombre_entidad = nombre_entidad; self.datos_entrada = datos_entrada; self.resultados = resultados
         self.total_opec = datos_entrada.total_opec; self.escala_pictograma = 1
-        pdf_tester = PDF_Reporte(); self.pdf_font_family = pdf_tester.active_font_family
-        plt.close(); self.graficos_img_buffer = self._generar_todos_los_graficos()
+        self.graficos_img_buffer = self._generar_todos_los_graficos()
     def _calcular_porcentaje_str(self, valor: float, total: float) -> str: return "0.0%" if total <= 0 else f"{(valor / total) * 100:.1f}%"
     def _preparar_datos_tabla(self) -> pd.DataFrame:
         i, a = self.resultados.ingreso, self.resultados.ascenso; tr, tg = i.reserva + a.reserva, i.general + a.general
@@ -209,17 +177,16 @@ class GeneradorReporte:
         plt.tight_layout(rect=[0, 0, 1, 0.95]); return self._render_fig_to_buffer(fig)
     def _crear_pictograma(self) -> Optional[io.BytesIO]:
         if self.total_opec == 0: return None
-        res, max_ico = self.resultados, 150; s_res = "★" if self.pdf_font_family == 'DejaVu' else "*"; s_gen = "●"
+        res = self.resultados; max_ico = 150; s_res = "*"; s_gen = "●" # Cambio a *
         self.escala_pictograma = 1 if self.total_opec <= max_ico else math.ceil(self.total_opec / max_ico)
         iconos = ([{'s':s_res,'c':PALETA_COLORES['ingreso_reserva']}]*round(res.ingreso.reserva/self.escala_pictograma) + [{'s':s_gen,'c':PALETA_COLORES['ingreso_general']}]*round(res.ingreso.general/self.escala_pictograma) + [{'s':s_res,'c':PALETA_COLORES['ascenso_reserva']}]*round(res.ascenso.reserva/self.escala_pictograma) + [{'s':s_gen,'c':PALETA_COLORES['ascenso_general']}]*round(res.ascenso.general/self.escala_pictograma))
         if not iconos: return None
         cols = 25; rows = math.ceil(len(iconos) / cols)
         fig, ax = plt.subplots(figsize=(10, rows * 0.45)); ax.set_xlim(-0.5, cols - 0.5); ax.set_ylim(-0.5, rows - 0.5); ax.axis("off"); ax.invert_yaxis()
-        font_for_plot = 'DejaVu Sans' if self.pdf_font_family == 'DejaVu' else 'sans-serif'
-        for i, icon in enumerate(iconos): ax.text(i % cols, i // cols, icon['s'], color=icon['c'], fontsize=12, ha='center',va='center',fontfamily=font_for_plot)
+        for i, icon in enumerate(iconos): ax.text(i % cols, i // cols, icon['s'], color=icon['c'], fontsize=12, ha='center',va='center',fontfamily='sans-serif')
         plt.tight_layout(); return self._render_fig_to_buffer(fig)
     def _generar_pictograma_explicacion(self, para_pdf=False) -> str:
-        s_res = ("★" if self.pdf_font_family == 'DejaVu' else "*") if para_pdf else "★"; res = self.resultados
+        s_res = "*"; res = self.resultados # Cambio a *
         items = [(res.ingreso.reserva, f"{s_res} Reserva Ingreso ({res.ingreso.reserva})"), (res.ingreso.general, f"● General Ingreso ({res.ingreso.general})"), (res.ascenso.reserva, f"{s_res} Reserva Ascenso ({res.ascenso.reserva})"), (res.ascenso.general, f"● General Ascenso ({res.ascenso.general})")]
         texto_items = "  |  ".join(text for count, text in items if count > 0)
         nota_escala = f" | Nota: Cada símbolo representa aprox. {self.escala_pictograma} vacantes." if self.escala_pictograma > 1 else ""
@@ -235,9 +202,9 @@ class GeneradorReporte:
     def generar_pdf_en_memoria(self) -> Tuple[str, bytes]:
         pdf = PDF_Reporte(); pdf.set_auto_page_break(auto=True, margin=20); pdf.alias_nb_pages(); pdf.add_page()
         fecha_generado = datetime.now(BOGOTA_TZ).strftime('%d/%m/%Y %H:%M:%S %Z') if BOGOTA_TZ else datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-        pdf.set_active_font('B', 16); pdf.cell(0, 10, 'Reporte de Simulación de Vacantes OPEC', new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
-        pdf.set_active_font('', 12); pdf.cell(0, 8, self.nombre_entidad, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
-        pdf.set_active_font('', 9); pdf.cell(0, 6, f"Generado: {fecha_generado}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C'); pdf.ln(8)
+        pdf.set_font('Helvetica', 'B', 16); pdf.cell(0, 10, 'Reporte de Simulación de Vacantes OPEC', new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+        pdf.set_font('Helvetica', '', 12); pdf.cell(0, 8, self.nombre_entidad, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+        pdf.set_font('Helvetica', '', 9); pdf.cell(0, 6, f"Generado: {fecha_generado}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C'); pdf.ln(8)
         pdf.chapter_title('Parámetros de la Simulación')
         params_html = f"• Total Vacantes OPEC: {self.total_opec}\n• Opción de Cálculo: {self.datos_entrada.opcion_calculo_str}\n• Vacantes Ingreso: {self.datos_entrada.v_ingreso}\n• Vacantes Ascenso: {self.datos_entrada.v_ascenso}"
         if self.datos_entrada.v_ascenso > 0: params_html += f"\n• ¿Existen servidores elegibles para ascenso?: {'Sí' if self.datos_entrada.hay_pcd_para_ascenso else 'No'}"
@@ -249,7 +216,7 @@ class GeneradorReporte:
             pdf.chapter_title("Desglose Visual de la Oferta")
             if buffer := self.graficos_img_buffer.get("pictograma"):
                 pdf.image(buffer, w=pdf.w - pdf.l_margin - pdf.r_margin)
-                pdf.set_active_font('I', 8); pdf.multi_cell(0, 5, self._generar_pictograma_explicacion(para_pdf=True), align='C'); pdf.ln(5)
+                pdf.set_font('Helvetica', 'I', 8); pdf.multi_cell(0, 5, self._generar_pictograma_explicacion(para_pdf=True), align='C'); pdf.ln(5)
         pdf.chapter_title('Conclusión y Pasos Siguientes'); pdf.chapter_body_html(self._generar_conclusion_base())
         filename = f"Reporte_OPEC_{''.join(c for c in self.nombre_entidad if c.isalnum())[:30]}_{datetime.now(BOGOTA_TZ).strftime('%Y%m%d') if BOGOTA_TZ else datetime.now().strftime('%Y%m%d')}.pdf"
         try:
