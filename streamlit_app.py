@@ -214,6 +214,7 @@ class GeneradorReporte:
         return self._render_fig_to_buffer(fig)
 
     def _generar_todos_los_graficos(self) -> Dict[str, Optional[io.BytesIO]]:
+        # CORRECCIÓN: El nombre del método del gráfico de pie era incorrecto.
         return {"unificado": self._crear_grafico_distribucion_unificado(), "pictograma": self.crear_grafico_waffle()}
     def generar_reporte_html_completo(self):
         from base64 import b64encode
