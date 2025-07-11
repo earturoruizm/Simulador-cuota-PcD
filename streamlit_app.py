@@ -1,5 +1,5 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v16 (VERSIÓN VERIFICADA Y MEJORADA)
+# CÓDIGO DEL SIMULADOR v16 (VERSIÓN VERIFICADA Y CORREGIDA)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
 # Adaptación, mejoras de UX/UI y enriquecimiento por: Asistente de IA de Google
@@ -486,38 +486,48 @@ class GeneradorReporte:
             return "error.pdf", b""
 
 # ==============================================================================
-# INTERFAZ DE USUARIO CON STREAMLIT (DISEÑO MEJORADO)
+# INTERFAZ DE USUARIO CON STREAMLIT (DISEÑO CORREGIDO)
 # ==============================================================================
 def aplicar_estilos_modernos():
-    """ Inyecta CSS para un diseño más moderno y amigable. """
+    """ Inyecta CSS para un diseño más moderno y amigable, con selectores robustos. """
     st.markdown(f"""
     <style>
-        /* --- Fuentes y Colores Base --- */
-        html, body, [class*="st-"], .st-emotion-cache-1v0mbdj, .st-emotion-cache-1kyxreq, .st-emotion-cache-1y4p8pa, .st-emotion-cache-1p05sfz {{
-            font-family: 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+        /* --- Contenedor principal y fondo --- */
+        [data-testid="stAppViewContainer"] {{
             background-color: {PALETA_COLORES['fondo_claro']};
         }}
-        /* --- Contenedor Principal --- */
-        .main .block-container {{
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            padding-left: 2rem;
-            padding-right: 2rem;
-        }}
-        /* --- Sidebar --- */
-        .st-emotion-cache-10oheav {{
+        
+        /* --- Barra lateral --- */
+        [data-testid="stSidebar"] {{
             background-color: {PALETA_COLORES['fondo_tarjeta']};
             border-right: 1px solid #ddd;
         }}
-        .st-emotion-cache-10oheav h2, .st-emotion-cache-10oheav h3 {{
-             color: {PALETA_COLORES['secundario']};
+
+        /* --- FORZAR COLOR DE TEXTO OSCURO EN LA BARRA LATERAL --- */
+        [data-testid="stSidebar"] p, 
+        [data-testid="stSidebar"] li,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] .st-emotion-cache-1y4p8pa {{
+            color: {PALETA_COLORES['texto_principal']} !important;
         }}
+
+        /* --- Títulos en la barra lateral (para especificidad) --- */
+        [data-testid="stSidebar"] h1, 
+        [data-testid="stSidebar"] h2, 
+        [data-testid="stSidebar"] h3 {{
+            color: {PALETA_COLORES['secundario']} !important;
+        }}
+
+        /* --- Títulos en el cuerpo principal --- */
+        [data-testid="stAppViewContainer"] h1 {{ color: {PALETA_COLORES['secundario']}; }}
+        [data-testid="stAppViewContainer"] h2, [data-testid="stAppViewContainer"] h3 {{ color: {PALETA_COLORES['primario']}; }}
+
         /* --- Botones --- */
         .stButton>button {{
             border-radius: 8px;
             border: 2px solid {PALETA_COLORES['primario']};
             background-color: {PALETA_COLORES['primario']};
-            color: {PALETA_COLORES['texto_claro']};
+            color: {PALETA_COLORES['texto_claro']} !important; /* Forzar color de texto en botón */
             padding: 12px 24px;
             font-weight: bold;
             transition: all 0.3s ease;
@@ -525,19 +535,8 @@ def aplicar_estilos_modernos():
         .stButton>button:hover {{
             background-color: {PALETA_COLORES['secundario']};
             border-color: {PALETA_COLORES['secundario']};
-            color: {PALETA_COLORES['texto_claro']};
+            color: {PALETA_COLORES['texto_claro']} !important; /* Forzar color de texto en botón */
             transform: scale(1.02);
-        }}
-        /* --- Títulos y Texto --- */
-        h1 {{ color: {PALETA_COLORES['secundario']}; }}
-        h2, h3 {{ color: {PALETA_COLORES['primario']}; }}
-        /* --- Tarjetas de Métricas --- */
-        .st-emotion-cache-1k9g3sg {{
-            background-color: {PALETA_COLORES['fondo_tarjeta']};
-            border-radius: 8px;
-            padding: 1rem;
-            border: 1px solid #eee;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }}
     </style>
     """, unsafe_allow_html=True)
