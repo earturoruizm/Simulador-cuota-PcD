@@ -1,5 +1,5 @@
 # ==============================================================================
-# CÓDIGO DEL SIMULADOR v16 (VERSIÓN MEJORADA Y ENRIQUECIDA)
+# CÓDIGO DEL SIMULADOR v16 (VERSIÓN VERIFICADA Y MEJORADA)
 # Código original de: Edwin Arturo Ruiz Moreno - Comisionado Nacional del Servicio Civil
 # Derechos Reservados CNSC © 2025
 # Adaptación, mejoras de UX/UI y enriquecimiento por: Asistente de IA de Google
@@ -234,7 +234,6 @@ class GeneradorReporte:
 
     def generar_tabla_html(self) -> str:
         df_styled = self._preparar_datos_tabla().astype(str)
-        # La última fila ya tiene strong tags, no es necesario aplicarlos de nuevo
         
         styles = [
             dict(selector="th", props=[
@@ -451,23 +450,24 @@ class GeneradorReporte:
 
         pdf.chapter_title('1. Parámetros de la Simulación')
         params_html = (
-            f"- Total Vacantes OPEC: <b>{self.total_opec}</b><br/>"
-            f"- Opción de Cálculo: {self.datos_entrada.opcion_calculo_str}<br/>"
-            f"- Vacantes para Ingreso: {self.datos_entrada.v_ingreso}<br/>"
+            f"- Total Vacantes OPEC: {self.total_opec}\n"
+            f"- Opción de Cálculo: {self.datos_entrada.opcion_calculo_str}\n"
+            f"- Vacantes para Ingreso: {self.datos_entrada.v_ingreso}\n"
             f"- Vacantes para Ascenso: {self.datos_entrada.v_ascenso}"
         )
         if self.datos_entrada.v_ascenso > 0:
             pcd_ascenso_str = 'Sí' if self.datos_entrada.hay_pcd_para_ascenso else 'No'
-            params_html += f"<br/>- Existen servidores elegibles para ascenso?: {pcd_ascenso_str}"
-        pdf.chapter_body_html(params_html.replace('<b>', '').replace('</b>', '').replace('<br/>', '\n'))
+            params_html += f"\n- Existen servidores elegibles para ascenso?: {pcd_ascenso_str}"
+        pdf.chapter_body_html(params_html)
         pdf.ln(5)
 
         pdf.chapter_title('2. Resultados Numéricos')
-        pdf.add_pandas_table(self._preparar_datos_tabla())
+        pdf.add_pandas_table(self._preparar_datos_tabla().applymap(lambda x: x.replace('<strong>','').replace('</strong>','') if isinstance(x, str) else x))
 
         if self.total_opec > 0:
-            pdf.add_page()
+            if pdf.get_y() > 160: pdf.add_page()
             pdf.add_image_from_buffer(self.grafico_barras_buffer, "3. Distribución de Vacantes por Modalidad")
+            if pdf.get_y() > 220: pdf.add_page()
             pdf.add_image_from_buffer(self.grafico_donut_buffer, "4. Distribución Global de la Reserva")
 
         if pdf.get_y() > 200: pdf.add_page()
@@ -509,7 +509,7 @@ def aplicar_estilos_modernos():
             background-color: {PALETA_COLORES['fondo_tarjeta']};
             border-right: 1px solid #ddd;
         }}
-        .st-emotion-cache-10oheav h2 {{
+        .st-emotion-cache-10oheav h2, .st-emotion-cache-10oheav h3 {{
              color: {PALETA_COLORES['secundario']};
         }}
         /* --- Botones --- */
