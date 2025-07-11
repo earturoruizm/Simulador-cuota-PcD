@@ -352,22 +352,26 @@ class GeneradorReporte:
         general_data = [res.ascenso.general, res.ingreso.general]
         reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
 
-        fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='white')
-        bars1 = ax.barh(labels, general_data, color=[PALETA_COLORES['ascenso_general'], PALETA_COLORES['ingreso_general']], edgecolor='grey')
-        bars2 = ax.barh(labels, reserva_data, left=general_data, color=[PALETA_COLORES['ascenso_reserva'], PALETA_COLORES['ingreso_reserva']], edgecolor='grey')
+        fig, ax = plt.subplots(figsize=(10, 4.5), facecolor='white')
+        bars1 = ax.barh(labels, general_data, color=[PALETA_COLORES['ascenso_general'], PALETA_COLORES['ingreso_general']], edgecolor='grey', height=0.6)
+        bars2 = ax.barh(labels, reserva_data, left=general_data, color=[PALETA_COLORES['ascenso_reserva'], PALETA_COLORES['ingreso_reserva']], edgecolor='grey', height=0.6)
 
-        for bar_group in (bars1, bars2):
-            for bar in bar_group:
+        for bar_group, data, totals in zip((bars1, bars2), (general_data, reserva_data), ([res.ascenso.total, res.ingreso.total], [res.ascenso.total, res.ingreso.total])):
+            for bar, value, total in zip(bar_group, data, totals):
                 width = bar.get_width()
                 if width > 0:
+                    pct = self._calcular_porcentaje_str(value, total)
+                    label = f'{int(value)} ({pct})'
+                    color = 'white' if width > max(general_data + reserva_data) / 4 else 'black'  # Adjust color based on bar size for visibility
                     ax.text(
                         bar.get_x() + width / 2,
                         bar.get_y() + bar.get_height() / 2,
-                        f'{int(width)}',
+                        label,
                         ha='center', va='center',
-                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_claro']
+                        fontsize=10, weight='bold', color=color
                     )
 
+        ax.set_title('Distribución de Vacantes', fontsize=14, color=PALETA_COLORES['texto_oscuro'])
         for spine in ax.spines.values():
             spine.set_visible(False)
 
@@ -386,7 +390,7 @@ class GeneradorReporte:
             handles=legend_patches,
             loc='lower center',
             ncol=2,
-            bbox_to_anchor=(0.5, -0.3),
+            bbox_to_anchor=(0.5, -0.15),
             frameon=False,
             fontsize=11
         )
@@ -412,8 +416,8 @@ class GeneradorReporte:
 
         # Equal aspect ratio ensures that pie is drawn as a circle.
         ax.axis('equal')  
-        plt.setp(autotexts, size=10, weight="bold", color="black")
-        plt.setp(texts, size=10)
+        plt.setp(autotexts, size=10, weight="bold", color="white")
+        plt.setp(texts, size=10, color=PALETA_COLORES['texto_oscuro'])
         ax.set_title('Porcentajes de Vacantes', fontsize=14, color=PALETA_COLORES['texto_oscuro'])
 
         plt.tight_layout()
