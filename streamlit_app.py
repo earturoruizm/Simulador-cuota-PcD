@@ -544,7 +544,7 @@ def aplicar_estilos_modernos():
 def configurar_sidebar():
     """ Configura y muestra los controles de entrada en la barra lateral. """
     with st.sidebar:
-        st.image("https://www.cnsc.gov.co/sites/default/files/2023-10/logo-cnsc.png", use_column_width=True)
+        st.image("https://www.cnsc.gov.co/sites/default/files/2023-10/logo-cnsc.png", use_container_width=True)
         st.header("⚙️ Parámetros de Entrada")
 
         with st.expander("ℹ️ Guía Rápida de Uso", expanded=False):
