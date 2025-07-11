@@ -292,7 +292,7 @@ class GeneradorReporte:
         for nombre, datos in [('INGRESO', r.ingreso), ('ASCENSO', r.ascenso)]:
             if datos.estado == EstadoCalculo.AJUSTE_V1:
                 mensajes.append(
-                    f"<li><strong>Nota ({nombre}):</strong> Con solo <strong>1 vacante</strong>, no se aplica reserva.</li>"
+                    f"<li><strong>Nota ({nombre}):</strong> Con solo 1 vacante, no se aplica reserva.</li>"
                 )
 
         if r.ascenso.reserva > 0:
@@ -402,7 +402,7 @@ class GeneradorReporte:
             data = b64encode(b.getvalue()).decode("utf-8")
             return (
                 f'<img src="data:image/png;base64,{data}" '
-                f'style="width:100%;max-width:700px;margin:auto;display:block;"/>'
+                f'style="width:100%;max-width:700px;margin:auto;display:block;">'
             )
 
         grafico_html = img(self.grafico_principal_buffer)
@@ -706,10 +706,10 @@ def main():
     # --- PIE DE PÁGINA ---
     st.divider()
     with st.expander("Marco Normativo"):
-        st.markdown(
-            "- **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)\n"
-            "- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)"
-        )
+        st.markdown("""
+- **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)
+- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)
+""")
     with st.expander("Acerca de este Simulador"):
         st.info(CREDITOS_SIMULADOR.replace("\n", "\n\n"))
 
