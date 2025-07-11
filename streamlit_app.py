@@ -292,7 +292,7 @@ class GeneradorReporte:
         for nombre, datos in [('INGRESO', r.ingreso), ('ASCENSO', r.ascenso)]:
             if datos.estado == EstadoCalculo.AJUSTE_V1:
                 mensajes.append(
-                    f"<li><strong>Nota ({nombre}):</strong> Con solo 1 vacante, no se aplica reserva.</li>"
+                    f"<li><strong>Nota ({nombre}):</strong> Con solo <strong>1 vacante</strong>, no se aplica reserva.</li>"
                 )
 
         if r.ascenso.reserva > 0:
@@ -402,7 +402,7 @@ class GeneradorReporte:
             data = b64encode(b.getvalue()).decode("utf-8")
             return (
                 f'<img src="data:image/png;base64,{data}" '
-                f'style="width:100%;max-width:700px;margin:auto;display:block;">'
+                f'style="width:100%;max-width:700px;margin:auto;display:block;"/>'
             )
 
         grafico_html = img(self.grafico_principal_buffer)
@@ -505,7 +505,7 @@ def main():
         initial_sidebar_state="auto"
     )
 
-    # Inject custom CSS for modern design
+    # Inject custom CSS for modern design with improved contrast
     st.markdown(
         """
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -520,6 +520,7 @@ def main():
             }
             body {
                 font-family: var(--font);
+                color: var(--text-color);
             }
             .stApp {
                 background-color: var(--background-color);
@@ -548,16 +549,23 @@ def main():
                 border-radius: 6px;
                 border: 1px solid #CCC;
                 padding: 0.5rem;
+                background-color: white !important;
+                color: #333333 !important;
             }
             .stNumberInput > div > div > input {
                 border-radius: 6px;
                 border: 1px solid #CCC;
                 padding: 0.5rem;
+                background-color: white !important;
+                color: #333333 !important;
             }
             .stRadio > div {
                 background-color: var(--secondary-background-color);
                 border-radius: 6px;
                 padding: 0.5rem;
+            }
+            .stRadio > label {
+                color: #333333 !important;
             }
             .stExpander {
                 border: 1px solid #DDD;
@@ -579,6 +587,12 @@ def main():
                 border-radius: 8px;
                 padding: 1rem;
                 background-color: var(--secondary-background-color);
+            }
+            label {
+                color: #333333 !important;
+            }
+            p {
+                color: #333333 !important;
             }
         </style>
         """,
