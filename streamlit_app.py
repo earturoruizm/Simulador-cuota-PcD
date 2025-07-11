@@ -501,7 +501,84 @@ def main():
     st.set_page_config(
         page_title="Simulador Reserva de Plazas PcD",
         page_icon="♿",
-        layout="wide"
+        layout="wide",
+        initial_sidebar_state="auto"
+    )
+
+    # Inject custom CSS for modern design
+    st.markdown(
+        """
+        <style>
+            :root {
+                --primary-color: #00796B;
+                --background-color: #F0F4F8;
+                --secondary-background-color: #FFFFFF;
+                --text-color: #333333;
+                --accent-color: #FFC107;
+                --font: 'Roboto', sans-serif;
+            }
+            .stApp {
+                background-color: var(--background-color);
+            }
+            .sidebar .sidebar-content {
+                background-color: var(--secondary-background-color);
+                border-right: 1px solid #DDD;
+            }
+            h1, h2, h3, h4 {
+                color: var(--primary-color);
+                font-family: var(--font);
+            }
+            .stButton > button {
+                background-color: var(--primary-color);
+                color: white;
+                border-radius: 8px;
+                border: 0;
+                padding: 0.5rem 1rem;
+                font-weight: bold;
+                transition: background-color 0.3s;
+            }
+            .stButton > button:hover {
+                background-color: #00695C;
+            }
+            .stTextInput > div > div > input {
+                border-radius: 6px;
+                border: 1px solid #CCC;
+                padding: 0.5rem;
+            }
+            .stNumberInput > div > div > input {
+                border-radius: 6px;
+                border: 1px solid #CCC;
+                padding: 0.5rem;
+            }
+            .stRadio > div {
+                background-color: var(--secondary-background-color);
+                border-radius: 6px;
+                padding: 0.5rem;
+            }
+            .stExpander {
+                border: 1px solid #DDD;
+                border-radius: 6px;
+                background-color: var(--secondary-background-color);
+            }
+            .stMetric {
+                background-color: var(--secondary-background-color);
+                border-radius: 6px;
+                padding: 0.5rem;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .stDivider {
+                border-top: 1px solid #DDD;
+                margin: 1rem 0;
+            }
+            .block-container {
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                border-radius: 8px;
+                padding: 1rem;
+                background-color: var(--secondary-background-color);
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
     )
 
     # --- ENCABEZADO ---
