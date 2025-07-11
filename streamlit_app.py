@@ -362,7 +362,7 @@ class GeneradorReporte:
                 if width > 0:
                     pct = self._calcular_porcentaje_str(value, total)
                     label = f'{int(value)} ({pct})'
-                    color = 'white' if width > max(general_data + reserva_data) / 4 else 'black'  # Adjust color based on bar size for visibility
+                    color = 'black'  # Set to black as per user request
                     ax.text(
                         bar.get_x() + width / 2,
                         bar.get_y() + bar.get_height() / 2,
@@ -416,7 +416,7 @@ class GeneradorReporte:
 
         # Equal aspect ratio ensures that pie is drawn as a circle.
         ax.axis('equal')  
-        plt.setp(autotexts, size=10, weight="bold", color="white")
+        plt.setp(autotexts, size=10, weight="bold", color="black")
         plt.setp(texts, size=10, color=PALETA_COLORES['texto_oscuro'])
         ax.set_title('Porcentajes de Vacantes', fontsize=14, color=PALETA_COLORES['texto_oscuro'])
 
@@ -603,6 +603,10 @@ def main():
                 background-color: white !important;
                 color: var(--text-color) !important;
             }
+            .stNumberInput > div > div > input[disabled] {
+                background-color: #f0f0f0 !important;
+                color: var(--text-color) !important;
+            }
             .stRadio > div {
                 background-color: var(--secondary-background-color);
                 border-radius: 6px;
@@ -610,6 +614,9 @@ def main():
             }
             .stRadio > label {
                 color: var(--text-color) !important;
+            }
+            .stRadio > div > label > div:first-child {
+                background-color: #808080 !important;  /* Gray for radio circles */
             }
             .stExpander {
                 border: 1px solid #DDD;
@@ -653,7 +660,7 @@ def main():
             st.warning("Logo no encontrado.")
     with col2:
         st.title("Simulador de Reserva de Plazas para Personas con Discapacidad")
-        st.markdown("Herramienta para calcular la reserva legal de empleos según la OPEC.")
+        st.markdown("Herramienta para calcular la reserva legal de empleos en cumplimiento de la Ley 2418 de 2024.")
 
     st.divider()
 
