@@ -352,9 +352,9 @@ class GeneradorReporte:
         general_data = [res.ascenso.general, res.ingreso.general]
         reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
 
-        fig, ax = plt.subplots(figsize=(10, 4.5), facecolor='white')
-        bars1 = ax.barh(labels, general_data, color=[PALETA_COLORES['ascenso_general'], PALETA_COLORES['ingreso_general']], edgecolor='grey', height=0.6)
-        bars2 = ax.barh(labels, reserva_data, left=general_data, color=[PALETA_COLORES['ascenso_reserva'], PALETA_COLORES['ingreso_reserva']], edgecolor='grey', height=0.6)
+        fig, ax = plt.subplots(figsize=(12, 6), facecolor='white')
+        bars1 = ax.barh(labels, general_data, color=[PALETA_COLORES['ascenso_general'], PALETA_COLORES['ingreso_general']], edgecolor='grey', height=0.7)
+        bars2 = ax.barh(labels, reserva_data, left=general_data, color=[PALETA_COLORES['ascenso_reserva'], PALETA_COLORES['ingreso_reserva']], edgecolor='grey', height=0.7)
 
         for bar_group, data, totals in zip((bars1, bars2), (general_data, reserva_data), ([res.ascenso.total, res.ingreso.total], [res.ascenso.total, res.ingreso.total])):
             for bar, value, total in zip(bar_group, data, totals):
@@ -390,7 +390,7 @@ class GeneradorReporte:
             handles=legend_patches,
             loc='lower center',
             ncol=2,
-            bbox_to_anchor=(0.5, -0.15),
+            bbox_to_anchor=(0.5, -0.2),
             frameon=False,
             fontsize=11
         )
@@ -555,7 +555,7 @@ def main():
                 --primary-color: #00796B;
                 --background-color: #F0F4F8;
                 --secondary-background-color: #FFFFFF;
-                --text-color: #000000;  /* All texts black */
+                --text-color: #000000;  # All texts black
                 --accent-color: #FFC107;
                 --font: 'Roboto', sans-serif;
             }
@@ -591,6 +591,10 @@ def main():
                 padding: 0.5rem;
                 background-color: white !important;
                 color: var(--text-color) !important;
+            }
+            .stTextInput > div > div > input::placeholder {
+                color: #000000 !important;
+                opacity: 0.6;
             }
             .stNumberInput > div > div > input {
                 border-radius: 6px;
