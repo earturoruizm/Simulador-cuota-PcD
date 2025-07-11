@@ -44,7 +44,7 @@ PALETA_COLORES = {
     'ascenso_general': '#FFECB3',
     'ascenso_reserva': '#FF8F00', 
     'texto_claro': '#FFFFFF', 
-    'texto_oscuro': '#333333',
+    'texto_oscuro': '#000000',  # Changed to black for better contrast
     'fondo_titulo': '#004D40', 
     'fondo_hover': '#E0F2F1', 
     'primario': '#00796B', 
@@ -226,7 +226,8 @@ class GeneradorReporte:
         self.datos_entrada = datos_entrada
         self.resultados = resultados
         self.total_opec = datos_entrada.total_opec
-        self.grafico_principal_buffer = self.crear_grafico_barras_apiladas()
+        self.grafico_barras_buffer = self.crear_grafico_barras_apiladas()
+        self.grafico_dona_buffer = self.crear_grafico_dona()
 
     def _calcular_porcentaje_str(self, valor: float, total: float) -> str:
         return "0.0%" if total <= 0 else f"{(valor / total) * 100:.1f}%"
@@ -352,8 +353,8 @@ class GeneradorReporte:
         reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
 
         fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='white')
-        bars1 = ax.barh(labels, general_data, color=[PALETA_COLORES['ascenso_general'], PALETA_COLORES['ingreso_general']])
-        bars2 = ax.barh(labels, reserva_data, left=general_data, color=[PALETA_COLORES['ascenso_reserva'], PALETA_COLORES['ingreso_reserva']])
+        bars1 = ax.barh(labels, general_data, color=[PALETA_COLORES['ascenso_general'], PALETA_COLORES['ingreso_general']], edgecolor='grey')
+        bars2 = ax.barh(labels, reserva_data, left=general_data, color=[PALETA_COLORES['ascenso_reserva'], PALETA_COLORES['ingreso_reserva']], edgecolor='grey')
 
         for bar_group in (bars1, bars2):
             for bar in bar_group:
@@ -364,7 +365,7 @@ class GeneradorReporte:
                         bar.get_y() + bar.get_height() / 2,
                         f'{int(width)}',
                         ha='center', va='center',
-                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro']
+                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_claro']
                     )
 
         for spine in ax.spines.values():
@@ -393,6 +394,31 @@ class GeneradorReporte:
         plt.tight_layout(pad=1)
         return self._render_fig_to_buffer(fig)
 
+    def crear_grafico_dona(self) -> Optional[io.BytesIO]:
+        if self.total_opec == 0:
+            return None
+
+        res = self.resultados
+        sizes = [res.ingreso.general, res.ingreso.reserva, res.ascenso.general, res.ascenso.reserva]
+        labels = ['Ingreso General', 'Ingreso Reserva', 'Ascenso General', 'Ascenso Reserva']
+        colors = [PALETA_COLORES['ingreso_general'], PALETA_COLORES['ingreso_reserva'], PALETA_COLORES['ascenso_general'], PALETA_COLORES['ascenso_reserva']]
+
+        fig, ax = plt.subplots(figsize=(6, 6), facecolor='white')
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, pctdistance=0.85, wedgeprops=dict(width=0.3, edgecolor='w'))
+
+        # Draw center circle for donut
+        centre_circle = plt.Circle((0,0),0.70,fc='white')
+        fig.gca().add_artist(centre_circle)
+
+        # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.axis('equal')  
+        plt.setp(autotexts, size=10, weight="bold", color="black")
+        plt.setp(texts, size=10)
+        ax.set_title('Porcentajes de Vacantes', fontsize=14, color=PALETA_COLORES['texto_oscuro'])
+
+        plt.tight_layout()
+        return self._render_fig_to_buffer(fig)
+
     def get_reporte_html(self) -> str:
         from base64 import b64encode
 
@@ -405,7 +431,8 @@ class GeneradorReporte:
                 f'style="width:100%;max-width:700px;margin:auto;display:block;"/>'
             )
 
-        grafico_html = img(self.grafico_principal_buffer)
+        grafico_barras_html = img(self.grafico_barras_buffer)
+        grafico_dona_html = img(self.grafico_dona_buffer)
         return (
             f"""<div style="font-family:sans-serif;border:1px solid #ddd;"""
             f"""border-radius:8px;padding:20px;background:#f9f9f9;"""
@@ -414,8 +441,11 @@ class GeneradorReporte:
             f"""border-bottom:2px solid {PALETA_COLORES['acento']};"""
             f"""padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
-            f"""Distribución Gráfica de Vacantes</h2><div style="background:#fff;"""
-            f"""padding:15px;border-radius:4px;">{grafico_html}</div>"""
+            f"""Distribución Gráfica de Vacantes (Barras)</h2><div style="background:#fff;"""
+            f"""padding:15px;border-radius:4px;">{grafico_barras_html}</div>"""
+            f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
+            f"""Distribución Gráfica de Vacantes (Dona)</h2><div style="background:#fff;"""
+            f"""padding:15px;border-radius:4px;">{grafico_dona_html}</div>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
             f"""Resumen de Distribución</h2>{self.generar_tabla_html()}"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
@@ -469,8 +499,15 @@ class GeneradorReporte:
         pdf.add_pandas_table(self._preparar_datos_tabla())
 
         if self.total_opec > 0:
-            pdf.chapter_title("Distribución Gráfica de Vacantes")
-            if buffer := self.grafico_principal_buffer:
+            pdf.chapter_title("Distribución Gráfica de Vacantes (Barras)")
+            if buffer := self.grafico_barras_buffer:
+                pdf.add_image_from_buffer(buffer, "")
+
+            if pdf.get_y() > 200:
+                pdf.add_page()
+
+            pdf.chapter_title("Distribución Gráfica de Vacantes (Dona)")
+            if buffer := self.grafico_dona_buffer:
                 pdf.add_image_from_buffer(buffer, "")
 
         if pdf.get_y() > 200:
@@ -505,7 +542,7 @@ def main():
         initial_sidebar_state="auto"
     )
 
-    # Inject custom CSS for modern design with improved contrast
+    # Inject custom CSS for modern design with all texts in black
     st.markdown(
         """
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -514,13 +551,13 @@ def main():
                 --primary-color: #00796B;
                 --background-color: #F0F4F8;
                 --secondary-background-color: #FFFFFF;
-                --text-color: #333333;
+                --text-color: #000000;  /* All texts black */
                 --accent-color: #FFC107;
                 --font: 'Roboto', sans-serif;
             }
             body {
                 font-family: var(--font);
-                color: var(--text-color);
+                color: var(--text-color) !important;
             }
             .stApp {
                 background-color: var(--background-color);
@@ -529,9 +566,8 @@ def main():
                 background-color: var(--secondary-background-color);
                 border-right: 1px solid #DDD;
             }
-            h1, h2, h3, h4 {
-                color: var(--primary-color);
-                font-family: var(--font);
+            h1, h2, h3, h4, h5, h6, p, label, div, span {
+                color: var(--text-color) !important;
             }
             .stButton > button {
                 background-color: var(--primary-color);
@@ -550,14 +586,14 @@ def main():
                 border: 1px solid #CCC;
                 padding: 0.5rem;
                 background-color: white !important;
-                color: #333333 !important;
+                color: var(--text-color) !important;
             }
             .stNumberInput > div > div > input {
                 border-radius: 6px;
                 border: 1px solid #CCC;
                 padding: 0.5rem;
                 background-color: white !important;
-                color: #333333 !important;
+                color: var(--text-color) !important;
             }
             .stRadio > div {
                 background-color: var(--secondary-background-color);
@@ -565,7 +601,7 @@ def main():
                 padding: 0.5rem;
             }
             .stRadio > label {
-                color: #333333 !important;
+                color: var(--text-color) !important;
             }
             .stExpander {
                 border: 1px solid #DDD;
@@ -577,6 +613,7 @@ def main():
                 border-radius: 6px;
                 padding: 0.5rem;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                color: var(--text-color) !important;
             }
             .stDivider {
                 border-top: 1px solid #DDD;
@@ -588,11 +625,11 @@ def main():
                 padding: 1rem;
                 background-color: var(--secondary-background-color);
             }
-            label {
-                color: #333333 !important;
+            .stAlert > div {
+                color: var(--text-color) !important;
             }
-            p {
-                color: #333333 !important;
+            .stSpinner > div {
+                color: var(--text-color) !important;
             }
         </style>
         """,
