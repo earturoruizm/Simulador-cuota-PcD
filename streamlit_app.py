@@ -260,14 +260,14 @@ class GeneradorReporte:
             dict(selector="th", props=[
                 ("font-size", "11pt"),
                 ("text-align", "center"),
-                ("background-color", PALETA_COLORES['fondo_titulo']"),
+                ("background-color", PALETA_COLORES['fondo_titulo']),
                 ("color", PALETA_COLORES['texto_claro'])
             ]),
             dict(selector="td", props=[
                 ("font-size", "10.5pt"),
                 ("text-align", "center"),
                 ("border", "1px solid #eee"),
-                ("color", PALETA_COLORES['texto_oscuro']"),
+                ("color", PALETA_COLORES['texto_oscuro']),
                 ("background-color", "#FFFFFF")
             ])
         ]
@@ -280,7 +280,7 @@ class GeneradorReporte:
         )
 
     def _generar_mensajes_base(self) -> List[str]:
-        mensajes = []
+        mensajes: List[str] = []
         r = self.resultados
 
         if r.ascenso.estado == EstadoCalculo.AJUSTE_SIN_PCD:
@@ -352,8 +352,8 @@ class GeneradorReporte:
         reserva_data = [res.ascenso.reserva, res.ingreso.reserva]
 
         fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='white')
-        bars1 = ax.barh(labels, general_data, color=PALETA_COLORES['ascenso_general'], label='General')
-        bars2 = ax.barh(labels, reserva_data, left=general_data, color=PALETA_COLORES['ascenso_reserva'], label='Reserva PcD')
+        bars1 = ax.barh(labels, general_data, color=[PALETA_COLORES['ascenso_general'], PALETA_COLORES['ingreso_general']])
+        bars2 = ax.barh(labels, reserva_data, left=general_data, color=[PALETA_COLORES['ascenso_reserva'], PALETA_COLORES['ingreso_reserva']])
 
         for bar_group in (bars1, bars2):
             for bar in bar_group:
@@ -364,7 +364,7 @@ class GeneradorReporte:
                         bar.get_y() + bar.get_height() / 2,
                         f'{int(width)}',
                         ha='center', va='center',
-                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro']']
+                        fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro']
                     )
 
         for spine in ax.spines.values():
@@ -372,12 +372,14 @@ class GeneradorReporte:
 
         ax.tick_params(bottom=False, left=False)
         ax.set_xticks([])
-        ax.set_yticklabels(labels, fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro']'])
+        ax.set_yticklabels(labels, fontsize=12, weight='bold', color=PALETA_COLORES['texto_oscuro'])
         ax.set_xlabel(f"Total de Vacantes: {self.total_opec}", fontsize=12, labelpad=10, color=PALETA_COLORES['texto_oscuro'])
 
         legend_patches = [
-            mpatches.Patch(color=PALETA_COLORES['ascenso_general'], label='Vacantes Generales'),
-            mpatches.Patch(color=PALETA_COLORES['ascenso_reserva'], label='Vacantes Reserva PcD')
+            mpatches.Patch(color=PALETA_COLORES['ascenso_general'], label='Ascenso General'),
+            mpatches.Patch(color=PALETA_COLORES['ascenso_reserva'], label='Ascenso Reserva PcD'),
+            mpatches.Patch(color=PALETA_COLORES['ingreso_general'], label='Ingreso General'),
+            mpatches.Patch(color=PALETA_COLORES['ingreso_reserva'], label='Ingreso Reserva PcD')
         ]
         ax.legend(
             handles=legend_patches,
@@ -394,7 +396,7 @@ class GeneradorReporte:
     def get_reporte_html(self) -> str:
         from base64 import b64encode
 
-        def img_to_base64(b: Optional[io.BytesIO]) -> str:
+        def img(b: Optional[io.BytesIO]) -> str:
             if not b:
                 return ""
             data = b64encode(b.getvalue()).decode("utf-8")
@@ -403,12 +405,12 @@ class GeneradorReporte:
                 f'style="width:100%;max-width:700px;margin:auto;display:block;"/>'
             )
 
-        grafico_html = img_to_base64(self.grafico_principal_buffer)
+        grafico_html = img(self.grafico_principal_buffer)
         return (
-            f"""<div style="font-family:sans-serif;border:1px solid #ddd;"
-            f"""border-radius:8px;padding:20px;background:#f9f9f9;"
+            f"""<div style="font-family:sans-serif;border:1px solid #ddd;"""
+            f"""border-radius:8px;padding:20px;background:#f9f9f9;"""
             f"""color:{PALETA_COLORES['texto_oscuro']};">"""
-            f"""<h1 style="color:{PALETA_COLORES['fondo_titulo']};"
+            f"""<h1 style="color:{PALETA_COLORES['fondo_titulo']};"""
             f"""border-bottom:2px solid {PALETA_COLORES['acento']};"""
             f"""padding-bottom:10px;">📊 Reporte de Simulación: {self.nombre_entidad}</h1>"""
             f"""<h2 style="color:{PALETA_COLORES['primario']};margin-top:25px;">"""
@@ -445,7 +447,7 @@ class GeneradorReporte:
         pdf.cell(0, 8, self.nombre_entidad,
                  new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         pdf.set_font('Helvetica', '', 9)
-        pdf.cell(0, 6, f"Generado: {fecha_generado",
+        pdf.cell(0, 6, f"Generado: {fecha_generado}",
                  new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         pdf.ln(8)
 
@@ -486,9 +488,8 @@ class GeneradorReporte:
         )
         try:
             return filename, bytes(pdf.output())
-        except Exception as e:
+        except (FPDFException, Exception) as e:
             st.error(f"Ocurrió un error al generar el PDF: {e}")
-            return filename, bytes(pdf.output())" 
             return "error.pdf", b""
 
 
@@ -500,84 +501,7 @@ def main():
     st.set_page_config(
         page_title="Simulador Reserva de Plazas PcD",
         page_icon="♿",
-        layout="wide",
-        initial_sidebar_state="auto"
-    )
-
-    # Inject custom CSS for modern design
-    st.markdown(
-        """
-        <style>
-            :root {
-                --primary-color: #00796B;
-                --background-color: #F0F4F8;
-                --secondary-background-color: #FFFFFF;
-                --text-color: #333333;
-                --accent-color: #FFC107;
-                --font: 'Roboto', sans-serif;
-            }
-            .stApp {
-                background-color: var(--background-color);
-            }
-            .sidebar .sidebar-content {
-                background-color: var(--secondary-background-color);
-                border-right: 1px solid #DDD;
-            }
-            h1, h2, h3, h4 {
-                color: var(--primary-color);
-                font-family: var(--font);
-            }
-            .stButton > button {
-                background-color: var(--primary-color);
-                color: white;
-                border-radius: 8px;
-                border: 0;
-                padding: 0.5rem 1rem;
-                font-weight: bold;
-                transition: background-color 0.3s;
-            }
-            .stButton > button:hover {
-                background-color: #00695C;
-            }
-            .stTextInput > div > div > input {
-                border-radius: 6px;
-                border: 1px solid #CCC;
-                padding: 0.5rem;
-            }
-            .stNumberInput > div > div > input {
-                border-radius: 6px;
-                border: 1px solid #CCC;
-                padding: 0.5rem;
-            }
-            .stRadio > div {
-                background-color: var(--secondary-background-color);
-                border-radius: 6px;
-                padding: 0.5rem;
-            }
-            .stExpander {
-                border: 1px solid #DDD;
-                border-radius: 6px;
-                background-color: var(--secondary-background-color);
-            }
-            .stMetric {
-                background-color: var(--secondary-background-color);
-                border-radius: 6px;
-                padding: 0.5rem;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            .stDivider {
-                border-top: 1px solid #DDD;
-                margin: 1rem 0;
-            }
-            .block-container {
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                border-radius: 8px;
-                padding: 1rem;
-                background-color: var(--secondary-background-color);
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
+        layout="wide"
     )
 
     # --- ENCABEZADO ---
