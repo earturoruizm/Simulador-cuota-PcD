@@ -707,11 +707,8 @@ def main():
     st.divider()
     with st.expander("Marco Normativo"):
         st.markdown(
-            "- **Ley 2418 de 2024:** [Consulte la norma en Función Pública]"
-            [](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)\n"
-            "- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes]"
-            "(https://www.cnsc.gov.co/sites/default/files/2025-02/"
-            "circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)"
+            "- **Ley 2418 de 2024:** [Consulte la norma en Función Pública](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=249256)\n"
+            "- **Circular Externa CNSC:** [Vea la circular sobre el reporte de vacantes](https://www.cnsc.gov.co/sites/default/files/2025-02/circular-externa-2025rs011333-reportede-vacantes-definitivas-aplicacion-ley-2418-2024.pdf)"
         )
     with st.expander("Acerca de este Simulador"):
         st.info(CREDITOS_SIMULADOR.replace("\n", "\n\n"))
