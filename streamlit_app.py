@@ -659,8 +659,8 @@ def main():
         except Exception:
             st.warning("Logo no encontrado.")
     with col2:
-        st.title("Simulador de Reserva de Plazas para Personas con Discapacidad")
-        st.markdown("Herramienta para calcular la reserva legal de empleos en cumplimiento de la Ley 2418 de 2024.")
+        st.title("Calculadora para cumplir con la reserva de plazas para Personas con Discapacidad (Ley 2418 de 2024)")
+        st.markdown("Calcula la cantidad de vacantes a reservar por modalidad de concurso.")
 
     st.divider()
 
