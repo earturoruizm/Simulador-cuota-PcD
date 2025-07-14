@@ -17,6 +17,7 @@ from enum import Enum
 from typing import Tuple, Optional, Any, Dict, List
 from dataclasses import dataclass
 import streamlit as st
+import time  # Para simular progreso
 
 # --- CONFIGURACIÓN E IMPORTACIONES ---
 try:
