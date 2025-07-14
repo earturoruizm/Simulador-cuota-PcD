@@ -596,14 +596,14 @@ def main():
                 color: #000000 !important;
                 opacity: 0.6;
             }
-            .stNumberInput > div > div > input {
+            div[data-testid="stNumberInput"] input {
                 border-radius: 6px;
                 border: 1px solid #CCC;
                 padding: 0.5rem;
                 background-color: white !important;
                 color: var(--text-color) !important;
             }
-            .stNumberInput > div > div > input[disabled] {
+            div[data-testid="stNumberInput"] input[disabled] {
                 background-color: #f0f0f0 !important;
                 color: var(--text-color) !important;
             }
@@ -659,8 +659,8 @@ def main():
         except Exception:
             st.warning("Logo no encontrado.")
     with col2:
-        st.title("Calculadora para cumplir con la reserva de plazas para Personas con Discapacidad (Ley 2418 de 2024)")
-        st.markdown("Calcula la cantidad de vacantes a reservar por modalidad de concurso.")
+        st.title("Simulador de Reserva de Plazas para Personas con Discapacidad")
+        st.markdown("Herramienta para calcular la reserva legal de empleos en cumplimiento de la Ley 2418 de 2024.")
 
     st.divider()
 
